@@ -491,17 +491,20 @@ MLE-Bench、Agentic Kaggle Skill、Kaggle 社区中 Agent 辅助的 writeup。
 
 **附录C**：AutoGluon 快速参考（Tabular / TimeSeries）
 
-**附录D**：表格基础模型速查（TabPFN 等）
+**附录D**：PyTorch / HuggingFace Transformers 速查
 
-**附录E**：Kaggle MCP 配置与安全实践
+**附录E**：表格基础模型速查（TabPFN 等）
 
-**附录F**：Kaggle 评估指标速查（含“Agent 容易在哪个指标上骗你”的提示）
+**附录F**：Kaggle MCP 配置与安全实践
 
-**附录G**：工件管理与实验日志规范（完整版）
+**附录G**：Kaggle 评估指标速查（含“Agent 容易在哪个指标上骗你”的提示）
+
+**附录H**：工件管理与实验日志规范（完整版）
 
 
 ## 更新历史
 
 | 日期 | 版本 | 更新内容 |
 |------|------|----------|
+| 2026-11-25 | v2.1 | 添加“**附录D**：PyTorch / HuggingFace Transformers 速查”，其它附录编号顺延 | 
 | 2026-11-22 | v2.0 | 比赛解析章节全部替换为 2024—2026 年比赛：表格（S6E3 客户流失 / S5E10 道路事故 / S6E1 学生成绩 / NeurIPS Open Polymer 2025）、时序（S5E1 贴纸销售 / S5E10 道路事故 / Jane Street 2024—2025）、图像（CSIRO Image2Biomass 2025—2026 / RSNA Knee 2026 / Image Matching 2025）、文本（Jigsaw Agile Community Rules 2025 / LLM Prompt Recovery 2024 / Make Data Count 2025）。每章保留 VibeKaggle 的“自动基线工件 → 人设定验证纪律 → Agent 批量实验 → 人审查工件并选择”循环，并引用具体获胜方案中的工件管理和人机分工细节 |
