@@ -252,15 +252,15 @@ EDA（探索性数据分析，就是“先摸清楚数据长啥样”）是 Agen
 
 我们让 Agent 生成 EDA 脚本。你可以把下面这段话直接丢给它：
 
-```
-请读取 data/train.csv 和 data/test.csv，生成一份 EDA 脚本，要求：
-1. 输出训练集/测试集的行数、列数、列名差异
-2. 对数值列：缺失率、均值、标准差、偏度、唯一值数
-3. 对类别列：基数（unique 数）、top5 频次
-4. 绘制目标列分布图、数值列按目标分组的箱线图、相关性热力图（前20特征）
-5. 所有图保存到 artifacts/eda/，统计表写入 artifacts/logs/eda_v001.jsonl
-6. 代码含 docstring，函数化
-```
+> **提示词**：
+>
+> 请读取 data/train.csv 和 data/test.csv，生成一份 EDA 脚本，要求：
+> 1. 输出训练集/测试集的行数、列数、列名差异
+> 2. 对数值列：缺失率、均值、标准差、偏度、唯一值数
+> 3. 对类别列：基数（unique 数）、top5 频次
+> 4. 绘制目标列分布图、数值列按目标分组的箱线图、相关性热力图（前20特征）
+> 5. 所有图保存到 artifacts/eda/，统计表写入 artifacts/logs/eda_v001.jsonl
+> 6. 代码含 docstring，函数化
 
 这里值得多唠叨一句：上面这段话就是我们说的"带工件约束的指令"。它不仅告诉模型"要做什么"，还规定了输出放哪（`artifacts/eda/`）、统计表叫什么（`eda_v001.jsonl`）、代码怎么写（有 docstring、函数化）。约束越多，模型输出的东西越像能直接使用的工件，而不是漂亮的废话。
 
@@ -268,71 +268,85 @@ EDA（探索性数据分析，就是“先摸清楚数据长啥样”）是 Agen
 
 模型会给你一段代码，节选如下（注意它连"思考过程"都给你了）：
 
-```
+> **AI 输出**
+>
 > （思考过程）用户需要一份可复用的 EDA 脚本。我先规划函数：
 > load_data、profile_numeric、profile_categorical、plot_target_dist、
 > plot_box_by_target、plot_corr_heatmap、main。缺失率计算要用
 > len(df) 做分母，类别列 top5 用 value_counts().head(5)。绘图用
 > matplotlib 避免 seaborn 依赖问题，中文字体需设置。
-
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from pathlib import Path
-import json
-
-ROOT = Path(__file__).resolve().parents[2]
-DATA, ART = ROOT / "data", ROOT / "artifacts"
-(ART / "eda").mkdir(parents=True, exist_ok=True)
-
-
-def load_data():
-    """读取训练集与测试集。"""
-    return pd.read_csv(DATA / "train.csv"), pd.read_csv(DATA / "test.csv")
-
-
-def profile_numeric(df):
-    """数值列画像：缺失率、均值、标准差、偏度、唯一值数。"""
-    num = df.select_dtypes(include=[np.number])
-    return pd.DataFrame({
-        "missing": num.isna().mean(),   # 缺失率
-        "mean": num.mean(),
-        "std": num.std(),
-        "skew": num.skew(),             # 偏度：0 对称，>0 右偏长尾
-        "nunique": num.nunique(),
-    })
-
-
-def profile_categorical(df):
-    """类别列画像：基数与 top5 频次。"""
-    cat = df.select_dtypes(include="object")
-    rows = []
-    for c in cat.columns:
-        vc = df[c].value_counts().head(5)   # 最常见的 5 个取值
-        rows.append({"col": c, "cardinality": df[c].nunique(),
-                     "top5": vc.to_dict()})
-    return rows
-
-
-def plot_target_dist(train):
-    """目标列分布。"""
-    fig, ax = plt.subplots(figsize=(6, 4))
-    train["target"].value_counts(normalize=True).sort_index().plot(
-        kind="bar", ax=ax, color=["#4C72B0", "#DD8452"])
-    ax.set_title("Target Distribution")
-    fig.savefig(ART / "eda" / "target_dist.png", dpi=120, bbox_inches="tight")
-    plt.close(fig)
-
-
-def main():
-    train, test = load_data()
-    # ... 省略绘图与 jsonl 写入细节 ...
-    print("✅ EDA 完成")
-
-
-if __name__ == "__main__":
-    main()
-```
+>
+> ```python
+> import pandas as pd
+> import numpy as np
+> import matplotlib.pyplot as plt
+> from pathlib import Path
+> import json
+> ```
+>
+> ROOT = Path(__file__).resolve().parents[2]
+> DATA, ART = ROOT / "data", ROOT / "artifacts"
+> (ART / "eda").mkdir(parents=True, exist_ok=True)
+>
+>
+> ```python
+> def load_data():
+>     """读取训练集与测试集。"""
+>     return pd.read_csv(DATA / "train.csv"), pd.read_csv(DATA / "test.csv")
+> ```
+>
+>
+> ```python
+> def profile_numeric(df):
+>     """数值列画像：缺失率、均值、标准差、偏度、唯一值数。"""
+>     num = df.select_dtypes(include=[np.number])
+>     return pd.DataFrame({
+>         "missing": num.isna().mean(),   # 缺失率
+>         "mean": num.mean(),
+>         "std": num.std(),
+>         "skew": num.skew(),             # 偏度：0 对称，>0 右偏长尾
+>         "nunique": num.nunique(),
+>     })
+> ```
+>
+>
+> ```python
+> def profile_categorical(df):
+>     """类别列画像：基数与 top5 频次。"""
+>     cat = df.select_dtypes(include="object")
+>     rows = []
+>     for c in cat.columns:
+>         vc = df[c].value_counts().head(5)   # 最常见的 5 个取值
+>         rows.append({"col": c, "cardinality": df[c].nunique(),
+>                      "top5": vc.to_dict()})
+>     return rows
+> ```
+>
+>
+> ```python
+> def plot_target_dist(train):
+>     """目标列分布。"""
+>     fig, ax = plt.subplots(figsize=(6, 4))
+>     train["target"].value_counts(normalize=True).sort_index().plot(
+>         kind="bar", ax=ax, color=["#4C72B0", "#DD8452"])
+>     ax.set_title("Target Distribution")
+>     fig.savefig(ART / "eda" / "target_dist.png", dpi=120, bbox_inches="tight")
+>     plt.close(fig)
+> ```
+>
+>
+> ```python
+> def main():
+>     train, test = load_data()
+>     # ... 省略绘图与 jsonl 写入细节 ...
+>     print("✅ EDA 完成")
+> ```
+>
+>
+> ```python
+> if __name__ == "__main__":
+>     main()
+> ```
 
 ### 3.2.2 人审查：哪些可信，哪些是幻觉
 
@@ -385,33 +399,34 @@ AutoGluon 能自动生成交互特征，但**领域驱动的组合特征**仍是
 
 我们让 Agent 实现并对比。把下面这段话丢给它：
 
-```
-请在固定 CV 协议下（configs/cv_protocol.yaml），基于 AUTOGLUON v001 的 OOF，
-新增特征 tenure_x_monthlycharges = tenure * MonthlyCharges，训练 LightGBM，
-产出 train_oof_LGBM_FE_v001.npy 与 test_preds_LGBM_FE_v001.npy，
-change_desc 写明新增特征，日志写入 artifacts/logs/。
-```
+> **提示词**：请在固定 CV 协议下（configs/cv_protocol.yaml），基于 AUTOGLUON v001 的 OOF，新增特征 tenure_x_monthlycharges = tenure * MonthlyCharges，训练 LightGBM，产出 train_oof_LGBM_FE_v001.npy 与 test_preds_LGBM_FE_v001.npy，change_desc 写明新增特征，日志写入 artifacts/logs/。
 
 模型输出（节选）：
 
-```
+> **AI 输出**
+>
 > （思考过程）需要复用第2章的 cv_protocol 与 save_artifact。LightGBM
 > 用 sklearn API，early_stopping 用验证折。新增特征只需在 X 上加一列。
 > 注意 change_desc 必须写清楚，便于人审查。
-
-import lightgbm as lgb
-from sklearn.metrics import roc_auc_score
-import numpy as np
-
-def add_feature(df):
-    """新增业务特征：在网时长 × 月费。"""
-    df = df.copy()
-    df["tenure_x_monthlycharges"] = df["tenure"] * df["MonthlyCharges"]
-    return df
-
-# 在每折上：X_tr = add_feature(X.iloc[tr]) ...
-# 训练 LGBM，产出 OOF，调用 save_artifact("LGBM_FE", "v001", ...)
-```
+>
+> ```python
+> import lightgbm as lgb
+> from sklearn.metrics import roc_auc_score
+> import numpy as np
+> ```
+>
+> ```python
+> def add_feature(df):
+>     """新增业务特征：在网时长 × 月费。"""
+>     df = df.copy()
+>     df["tenure_x_monthlycharges"] = df["tenure"] * df["MonthlyCharges"]
+>     return df
+> ```
+>
+> ```python
+> # 在每折上：X_tr = add_feature(X.iloc[tr]) ...
+> # 训练 LGBM，产出 OOF，调用 save_artifact("LGBM_FE", "v001", ...)
+> ```
 
 模型给的代码很短，这恰恰是对的：它没有把训练循环和保存工件的逻辑重新写一遍，而是说"这部分复用第 2 章已经写好的 `save_artifact`"。好的 Agent 应该学会复用你已经建立的基础设施，而不是每次都从零开始造轮子。这也是我们前两章为什么花那么多篇幅去定义工件规范——规范一旦立好，后面每个实验都只是"往同一个模子里填东西"。
 
