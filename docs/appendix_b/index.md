@@ -294,30 +294,27 @@ flowchart TD
 
 调参时最常撞上的就是早停不生效，可以这样问：
 
-```
-我用 XGBRegressor 加了 early_stopping_rounds=50，但模型还是跑满了
-n_estimators，早停好像没生效。帮我列可能原因，不要改我的代码。
-```
+> **提示词**：我用 XGBRegressor 加了 early_stopping_rounds=50，但模型还是跑满了n_estimators，早停好像没生效。帮我列可能原因，不要改我的代码。
 
 模型会这样答：
 
-```
+> **AI 输出**
+>
 > （思考过程）早停不生效最常见就三种：eval_set 没传、fit 里没把
 > early_stopping_rounds 传进去（新版 XGBoost 要放 fit 参数里）、
 > 或者验证集上分数一直在涨。按可能性排序，给排查动作。
-
-按可能性从高到低：
-
-1. **`eval_set` 没传或传错了**：早停必须有验证数据，没有它无从判断。
-   检查 `fit(..., eval_set=[(X_val, y_val)])` 是否真的传了。
-2. **参数传错位置**：新版 XGBoost 的 `early_stopping_rounds` 要放在
-   `fit()` 里，不是构造函数里。放错位置会被静默忽略。
-3. **验证集分数一直在涨**：那说明模型还没到头，跑满 `n_estimators`
-   是正确行为，不是 bug。看 `evals_result()` 里的分数曲线确认。
-4. **`eval_metric` 与你的目标不一致**：比如回归却用 `auc`，分数不动。
-
-先看第 1、2 条，九成问题在这。
-```
+>
+> 按可能性从高到低：
+>
+> 1. **`eval_set` 没传或传错了**：早停必须有验证数据，没有它无从判断。
+>    检查 `fit(..., eval_set=[(X_val, y_val)])` 是否真的传了。
+> 2. **参数传错位置**：新版 XGBoost 的 `early_stopping_rounds` 要放在
+>    `fit()` 里，不是构造函数里。放错位置会被静默忽略。
+> 3. **验证集分数一直在涨**：那说明模型还没到头，跑满 `n_estimators`
+>    是正确行为，不是 bug。看 `evals_result()` 里的分数曲线确认。
+> 4. **`eval_metric` 与你的目标不一致**：比如回归却用 `auc`，分数不动。
+>
+> 先看第 1、2 条，九成问题在这。
 
 ---
 

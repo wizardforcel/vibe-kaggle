@@ -234,31 +234,36 @@ flowchart TD
 
 工件规范最容易被问的就是"这个文件名合规吗"，可以这样问：
 
-```
-我要检查一批工件文件名是否符合 train_oof_[模型]_[版本].npy 规范。
-帮我写一个校验脚本，只检查文件名格式，不改文件。
-```
+> **提示词**：我要检查一批工件文件名是否符合 train_oof_[模型]_[版本].npy 规范。帮我写一个校验脚本，只检查文件名格式，不改文件。
 
 模型会这样答：
 
-```
+> **AI 输出**
+>
 > （思考过程）用户要脚本，只检查文件名格式，不改文件。用正则
 > 做，返回合规/不合规列表，别有副作用。
-
-import re
-from pathlib import Path
-
-PATTERN = re.compile(r"^(train_oof|test_preds|exp|cfg|submission)_([A-Z0-9_]+)_v(\d{3})\.(npy|jsonl|yaml|csv)$")
-
-def check_artifact_names(dir_path):
-    bad = []
-    for p in Path(dir_path).iterdir():
-        if not PATTERN.match(p.name):
-            bad.append(p.name)
-    return bad
-
-# 返回不合规文件名列表，空列表表示全合规
-```
+>
+> ```python
+> import re
+> from pathlib import Path
+> ```
+>
+> ```python
+> PATTERN = re.compile(r"^(train_oof|test_preds|exp|cfg|submission)_([A-Z0-9_]+)_v(\d{3})\.(npy|jsonl|yaml|csv)$")
+> ```
+>
+> ```python
+> def check_artifact_names(dir_path):
+>     bad = []
+>     for p in Path(dir_path).iterdir():
+>         if not PATTERN.match(p.name):
+>             bad.append(p.name)
+>     return bad
+> ```
+>
+> ```python
+> # 返回不合规文件名列表，空列表表示全合规
+> ```
 
 这段脚本只读不写，你可以先跑在一份副本上，确认没问题后再用于正式目录。
 
