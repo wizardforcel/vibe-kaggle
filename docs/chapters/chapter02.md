@@ -1,400 +1,451 @@
 # 第2章 VibeKaggle 的操作系统：工件、验证、Agent、预算
 
-> **本章目标**：把第 1 章的“肌肉记忆”升级为**全书通用的基础协议**。你将建立工件规范、固定验证协议、划定 Agent 能力边界、配置 MCP 安全流水线。本章结束时，你将拥有一套**可复用的操作系统**，后续每一场比赛都在其上运行。
+> **本章目标**：把第 1 章搭的“工地”升级成一套**操作系统**。你会拿到四样东西：一份正式的工件规范、一份不可篡改的验证协议、一张 Agent 能干/不能干的边界表、一条带护栏的 MCP 流水线。这一章是全书的地基，后面每一场比赛都跑在这套系统上。
+
+---
+
+## 开篇：第 1 章搭了工地，这一章要盖楼
+
+上一章我们建好了文件夹、跑通了常数基线、写好了提交自检脚本。如果你照着做了，现在电脑里应该有 `artifacts/` 目录和几个 `.npy` 文件。但说实话，那还只是个“能用的工地”，离“操作系统”还差得远。
+
+差在哪？打个比方。第 1 章的工地，相当于你租了个毛坯房，水电通了，能住人。但你要长期住、还要请施工队（Agent）来装修，就得有物业规定：垃圾放哪、几点能施工、装修队只能走哪条通道、每天最多运多少材料。没有这些规定，施工队一进场就乱套。
+
+这一章要定的，就是这套“物业规定”。它分四块，我们一块一块来：
+
+1. **工件规范**——规定每样产出物叫什么名、放哪、带什么信息（这是物理基础）；
+2. **验证优先**——规定“怎么切数据、怎么算分”这件事只能人说了算（这是判断纪律）；
+3. **Agent 能力边界**——划清楚哪些活能交给 Agent、哪些必须人来做（这是分工原则）；
+4. **MCP 流水线**——让 Agent 能持续操作平台，但每一步都有护栏（这是安全边界）。
+
+把这四块拼起来，你就有了 VibeKaggle 的“操作系统”。后面第 3 章开始，每一场比赛都是在这套系统上跑的应用程序。
 
 ---
 
 ## 2.1 工件规范：VibeKaggle 的物理基础
 
-### 为什么工件规范必须是“物理基础”？
+### 先说清楚：为什么“工件规范”值得单独一节？
 
-想象一下：Agent 在固定 CV 下跑了 200 个实验，每个实验产出 OOF 和测试预测。如果没有统一的命名、目录、元数据：
-- 你无法用脚本自动收集所有 OOF 做集成；
-- 你无法追溯某个工件是哪个版本、哪个模型、哪个 CV 方案产出的；
-- 你无法检查“验证污染”——Agent 是否偷偷换了 CV 方案刷分；
-- 甚至无法把工件喂给下一个 Agent 做 Stacking。
+你可能觉得，不就是文件命名嘛，有什么大不了的。但我要告诉你，这是整本书里**最容易被新手跳过、又最要命**的一节。
 
-**工件规范就是让“工件可组合、可追溯、可审计”的物理协议。**
+设想一个场景。Agent 一晚上跑了 200 个实验，每个实验都产出一个 OOF 文件和一个测试预测文件。第二天早上你想做集成（把多个模型的结果混合），结果发现：文件名乱七八糟，有的叫 `oof1.npy`，有的叫 `model_result_final_v2.npy`，你根本不知道哪个是哪个模型、哪个版本、用的什么验证方案。更糟的是，你想查“Agent 有没有偷偷换验证方式刷分”，翻遍日志也找不到记录。
+
+这就是没有工件规范的后果：**工件不可组合、不可追溯、不可审计**。而这三件事，恰恰是 VibeKaggle 的命根子。
+
+所以我们要把工件规范当成“物理协议”来定——不是建议，是强制。定了之后，人和 Agent 都得遵守。
 
 ### 2.1.1 目录结构（全书统一）
 
+先把目录结构定死。你第 1 章已经建了 `artifacts/oof/` 这几个，现在我们把它补全成完整版：
+
 ```
 <project_root>/
-├── artifacts/                    # 所有工件的根目录（Git 忽略，或用 DVC 管理）
-│   ├── oof/                      # Out-of-Fold 预测：形状 (n_train,)
-│   │   └── train_oof_[MODEL]_[VERSION].npy
-│   ├── test_preds/               # 测试集预测：形状 (n_test,)
-│   │   └── test_preds_[MODEL]_[VERSION].npy
-│   ├── logs/                     # 实验日志：JSON Lines，每行一个实验
-│   │   └── exp_[MODEL]_[VERSION].jsonl
-│   ├── configs/                  # 配置快照：YAML，便于人阅读
-│   │   └── cfg_[MODEL]_[VERSION].yaml
+├── artifacts/                    # 所有工件的根目录（建议加进 .gitignore，或用 DVC 管理）
+│   ├── oof/                      # 折外预测，形状 (n_train,)
+│   │   └── train_oof_[模型]_[版本].npy
+│   ├── test_preds/               # 测试集预测，形状 (n_test,)
+│   │   └── test_preds_[模型]_[版本].npy
+│   ├── logs/                     # 实验日志，JSON Lines，一行一个实验
+│   │   └── exp_[模型]_[版本].jsonl
+│   ├── configs/                  # 配置快照，YAML，方便人看
+│   │   └── cfg_[模型]_[版本].yaml
 │   ├── submissions/              # 生成的提交文件备份
-│   │   └── submission_[MODEL]_[VERSION].csv
+│   │   └── submission_[模型]_[版本].csv
 │   └── ensembles/                # 集成产出的工件
-│       ├── oof_ensemble_[NAME]_[VERSION].npy
-│       └── test_ensemble_[NAME]_[VERSION].npy
-├── data/                         # 原始数据（只读）
+│       ├── oof_ensemble_[名字]_[版本].npy
+│       └── test_ensemble_[名字]_[版本].npy
+├── data/                         # 原始数据（只读，别改）
 │   ├── train.csv
 │   ├── test.csv
 │   └── sample_submission.csv
 ├── src/                          # 可复用源码
-│   ├── utils/
-│   ├── baselines/
-│   ├── features/
-│   ├── models/
-│   └── ensembles/
-├── configs/                      # 项目级配置（非实验级）
+│   ├── utils/                    # 工具函数（自检、CV 协议、哈希）
+│   ├── baselines/                # 各种基线
+│   ├── features/                 # 特征工程
+│   ├── models/                   # 模型
+│   └── ensembles/                # 集成
+├── configs/                      # 项目级配置（不是单次实验的）
 │   ├── rules.yaml                # 比赛规则红线
 │   ├── cv_protocol.yaml          # 验证协议（人设定，不可变）
 │   └── agent_policy.yaml         # Agent 权限策略
-├── notebooks/                    # 探索性笔记本（不产出工件）
+├── notebooks/                    # 探索性笔记本（不产出正式工件）
 └── scripts/                      # 一次性脚本
 ```
 
+这里有个小讲究：`artifacts/` 目录建议加进 `.gitignore`（用 Git 管理代码时），因为工件文件可能很大，不适合塞进代码仓库。如果你想让工件也能版本管理，可以用 DVC 这类工具。但这是后话，现在你先把目录建对。
+
 ### 2.1.2 命名约定（强制）
 
-| 要素 | 格式 | 示例 | 说明 |
-|------|------|------|------|
-| 模型标识 | `[A-Z0-9_]+` | `AUTOGLUON`, `LGBM`, `XGB`, `TABPFN`, `NN`, `ENSEMBLE` | 大写，下划线分隔 |
-| 版本号 | `v` + 3 位数字 | `v001`, `v012`, `v100` | 严格递增，便于排序 |
-| 任务后缀 | 可选 | `_cls`, `_reg`, `_rank` | 多任务时区分 |
+命名这件事，看着小，但它是“可组合”的前提。想象一下，如果每个实验的文件名都带随机后缀，你写脚本批量读取时就得写一堆正则去猜，迟早出错。所以我们要定死命名规则：
 
-**完整文件名模式**：
-- OOF：`train_oof_{MODEL}_{VERSION}.npy`
-- 测试预测：`test_preds_{MODEL}_{VERSION}.npy`
-- 日志：`exp_{MODEL}_{VERSION}.jsonl`
-- 配置：`cfg_{MODEL}_{VERSION}.yaml`
-- 提交：`submission_{MODEL}_{VERSION}.csv`
-- 集成 OOF：`oof_ensemble_{NAME}_{VERSION}.npy`
+| 要素 | 格式 | 例子 | 说明 |
+|------|------|------|------|
+| 模型标识 | 大写字母+下划线 | `AUTOGLUON`、`LGBM`、`XGB`、`TABPFN`、`NN` | 一眼看出是什么模型 |
+| 版本号 | `v` + 三位数字 | `v001`、`v012`、`v100` | 严格递增，排序不乱 |
+| 任务后缀 | 可选 | `_cls`、`_reg` | 多任务时区分 |
+
+完整文件名长这样：
+- OOF：`train_oof_{模型}_{版本}.npy`
+- 测试预测：`test_preds_{模型}_{版本}.npy`
+- 日志：`exp_{模型}_{版本}.jsonl`
+- 配置：`cfg_{模型}_{版本}.yaml`
+- 提交：`submission_{模型}_{版本}.csv`
+- 集成 OOF：`oof_ensemble_{名字}_{版本}.npy`
+
+你照着这个填，永远不会乱。
 
 ### 2.1.3 每个工件必须附带的最小元数据
 
-每个 `.jsonl` 日志行必须包含以下字段（Agent 自动生成，人审查）：
+光有文件名还不够。每个实验跑完，日志里必须记清楚“这次实验到底是怎么回事”。我们用 Pydantic（一个 Python 数据校验库）定义一个“元数据模板”，强制每次实验都填满这些字段：
 
 ```python
 # src/utils/artifact_schema.py
+"""
+工件元数据的"身份证"模板。
+每次实验结束，都要生成一份这样的记录，写进 logs/ 目录。
+Pydantic 会自动校验字段类型和必填项，缺了就会报错。
+"""
+
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
 from datetime import datetime
 
+
 class ArtifactMetadata(BaseModel):
-    # 身份
+    # ---- 身份：这是谁家的实验 ----
     model: str                    # 模型标识，如 "AUTOGLUON"
     version: str                  # 版本，如 "v001"
     task_type: Literal["binary", "multiclass", "regression", "ranking"]
-    
-    # 验证协议（关键：防验证污染）
-    cv_scheme: str                # 如 "StratifiedKFold_5_42" 或 "GroupKFold_5_group_col_42"
-    cv_fold_indices_hash: str     # 验证折索引的 SHA256，确保协议未被篡改
-    
-    # 性能
-    cv_scores: List[float]        # 每折分数
-    cv_mean: float
-    cv_std: float
-    metric: str                   # 如 "auc", "rmse", "logloss"
-    
-    # 工件路径
-    oof_path: str                 # 相对 artifacts/ 路径
-    test_path: str
+
+    # ---- 验证协议（最关键，防作弊用） ----
+    cv_scheme: str                # 验证方案描述，如 "StratifiedKFold_5_42"
+    cv_fold_indices_hash: str     # 验证折索引的哈希，确保协议没被偷偷改
+
+    # ---- 性能 ----
+    cv_scores: List[float]        # 每一折的分数
+    cv_mean: float                # 平均分
+    cv_std: float                 # 标准差（衡量稳定性）
+    metric: str                   # 指标名，如 "auc"、"rmse"
+
+    # ---- 工件路径 ----
+    oof_path: str                 # OOF 文件相对路径
+    test_path: str                # 测试预测文件相对路径
     submission_path: Optional[str] = None
-    
-    # 数据血统
-    n_train: int
-    n_test: int
-    feature_hash: str             # 训练特征矩阵的哈希（排除目标列）
-    preprocessing_hash: str       # 预处理管线哈希
-    
-    # 变更描述（人工填写或 Agent 摘要）
-    change_desc: str              # 一行描述：如 "增加交互特征 X*Y"、"调整 learning_rate 0.05->0.01"
-    
-    # 时间戳
+
+    # ---- 数据血统（这批数据是怎么来的） ----
+    n_train: int                  # 训练样本数
+    n_test: int                   # 测试样本数
+    feature_hash: str             # 特征矩阵的哈希
+    preprocessing_hash: str       # 预处理管线的哈希
+
+    # ---- 变更描述（这次改了什么，一句话） ----
+    change_desc: str              # 如 "增加交互特征 X*Y"
+
+    # ---- 时间与来源 ----
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    agent_model: Optional[str] = None  # 如 "claude-opus-4.8"
-    human_reviewed: bool = False       # 人是否已审查
-    
+    agent_model: Optional[str] = None   # 哪个 Agent 干的，如 "claude-opus-4.8"
+    human_reviewed: bool = False        # 人审过了没
+
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat()}
 
-# 验证函数
+
 def validate_artifact_metadata(meta: ArtifactMetadata) -> bool:
-    """校验工件元数据完整性"""
-    # 1. 必填字段非空
-    assert meta.model and meta.version and meta.change_desc
-    # 2. CV 折数一致
-    assert len(meta.cv_scores) >= 2
-    # 3. 路径存在
+    """校验元数据完整性，缺胳膊少腿就报错。"""
+    assert meta.model and meta.version and meta.change_desc, "身份或变更描述不能空"
+    assert len(meta.cv_scores) >= 2, "至少要两折分数"
     from pathlib import Path
-    assert Path(meta.oof_path).exists()
-    assert Path(meta.test_path).exists()
-    # 4. 分数合理
-    assert all(0 <= s <= 1 or -1e6 < s < 1e6 for s in meta.cv_scores)
+    assert Path(meta.oof_path).exists(), "OOF 文件不存在"
+    assert Path(meta.test_path).exists(), "测试预测文件不存在"
     return True
 ```
 
-> **没有工件规范，“人看 OOF 做判断”是空话，“Agent 自动做 hill climbing”无从谈起，“验证污染”也无从检查。**
+这里面最不显眼但最重要的字段是 `cv_fold_indices_hash`——它是验证折索引的哈希值。有了它，你就能在事后检查“Agent 有没有偷偷换验证方案”。这个机制 2.2 节会详细讲，现在你只需要知道：**它是防作弊的锚点。**
+
+用一张图看看一个工件从“实验开始”到“人审通过”的生命周期：
 
 ```mermaid
 flowchart LR
-    A[实验开始] --> B[读取 cv_protocol.yaml]
+    A[实验开始] --> B[读 cv_protocol.yaml]
     B --> C[固定验证折索引]
-    C --> D[计算 fold_indices_hash]
-    D --> E[训练模型产出预测]
-    E --> F[保存 OOF + test_preds]
-    F --> G[计算 feature_hash]
-    G --> H[生成 ArtifactMetadata]
-    H --> I[写入 .jsonl 日志]
+    C --> D[算 fold_indices_hash]
+    D --> E[训练模型出预测]
+    E --> F[存 OOF + test_preds]
+    F --> G[算 feature_hash]
+    G --> H[生成元数据]
+    H --> I[写进 .jsonl 日志]
     I --> J[人审查 human_reviewed=true]
     style D fill:#ffcdd2
     style J fill:#c8e6c9
 ```
 
+> 记住这句话：**没有工件规范，“人看 OOF 做判断”是空话，“Agent 自动做集成”无从谈起，“验证污染”也无从检查。**
+
 ---
 
 ## 2.2 验证优先：不可委托的判断纪律
 
-### 2.2.1 什么是“验证优先”？
+### 2.2.1 什么叫“验证优先”？
 
-**验证方案的设计（折数、分层、分组、时间切分）必须由人完成，Agent 只负责执行。**
+一句话：**验证方案怎么设计（切几折、怎么分层、要不要分组、要不要按时间切），必须人来做；Agent 只负责照着执行。**
 
-这听起来像常识，但在 Agent 高吞吐量下极易被打破：
+这话听着像废话，但在 Agent 高吞吐的场景下，特别容易被破坏。我给你描述一个真实会发生的场景：
 
-> **验证污染**：当 Agent 被允许“尝试多种 CV 方案并选最好的那个”时，验证本身就成了搜索空间的一部分。
+你让 Agent“帮我把分数刷上去”。Agent 很卖力，它试了 StratifiedKFold 5 折，分数 0.85；又试了普通 KFold，分数 0.86；再试了 GroupKFold，分数 0.87。它一看， GroupKFold 最高，就用了这个，还沾沾自喜地告诉你“我找到了更好的验证方案”。
+
+问题来了：**验证方案本身变成了被优化的对象。** 这就好比考试前你不断换判卷标准，直到找到一套能让你分数最高的判法——你的“高分”毫无意义，因为你已经不是在学知识，而是在钻判卷的空子。这在机器学习里叫**验证污染（validation contamination）**，是 Agent 时代最隐蔽的过拟合。
+
+用图看这个过程有多危险：
 
 ```mermaid
 flowchart TD
-    A[Agent 接到任务] --> B{允许 Agent 选择 CV 方案?}
-    B -->|是| C[Agent 尝试 StratifiedKFold]
-    C --> D[Agent 尝试 KFold]
-    D --> E[Agent 尝试 GroupKFold]
-    E --> F[Agent 选分数最高的 CV 方案]
-    F --> G[验证污染：CV 变成了超参数]
-    G --> H[本地 CV 看起来极好]
-    H --> I[LB 暴跌]
+    A[Agent 接到任务] --> B{允许 Agent 自己选验证方案?}
+    B -->|是| C[试 StratifiedKFold]
+    C --> D[试 KFold]
+    D --> E[试 GroupKFold]
+    E --> F[选分数最高的那个]
+    F --> G[验证污染：验证变成了超参数]
+    G --> H[本地 CV 虚高]
+    H --> I[排行榜暴跌]
     B -->|否| J[人预先固定 cv_protocol.yaml]
-    J --> K[Agent 只在固定折上跑实验]
+    J --> K[Agent 只在固定折上跑]
     K --> L[CV 分数可信]
-    L --> M[LB 与 CV 一致性高]
+    L --> M[CV 与 LB 一致]
     style G fill:#ffcdd2
     style F fill:#ffcdd2
     style J fill:#c8e6c9
     style K fill:#c8e6c9
 ```
 
+所以我们的做法是：**人在项目一开始，就把验证方案写成一份“宪法”文件，之后全程只读不改。** Agent 每次跑实验，都只能照着这份宪法切折。
+
 ### 2.2.2 `cv_protocol.yaml`：验证协议的“宪法”
 
-每个项目开始时，**人必须先写好这个文件**，之后全程**只读不改**：
+下面这份文件，你要在跑第一个模型之前写好，然后**锁死**。写的时候要像立法一样认真，因为后面所有实验都靠它：
 
 ```yaml
 # configs/cv_protocol.yaml
-# 由人编写，Agent 只读，全程不可变
-# 修改此文件 = 重启项目（所有工件作废）
+# 由人编写，Agent 只读，全程不可变。
+# 一旦修改这个文件 = 项目重启（所有历史工件作废）。
 
 protocol_version: "1.0"
 created_at: "2026-01-15T10:00:00Z"
 author: "human"
 
-# 任务类型决定默认 CV 类型
-task_type: "binary"  # binary / multiclass / regression / ranking
+# 任务类型决定默认的验证方式
+task_type: "binary"      # binary / multiclass / regression / ranking
 
-# 核心 CV 方案（二选一，或自定义）
+# 核心验证方案
 cv_scheme:
-  type: "StratifiedKFold"  # 可选: KFold, StratifiedKFold, GroupKFold, TimeSeriesSplit, Custom
-  n_splits: 5
-  random_state: 42
+  type: "StratifiedKFold"   # 可选：KFold / StratifiedKFold / GroupKFold / TimeSeriesSplit
+  n_splits: 5               # 切 5 折
+  random_state: 42          # 随机种子，固定才能复现
   shuffle: true
-  
-  # GroupKFold 时必填
-  group_column: null       # 如 "customer_id", "store_id"
-  
-  # TimeSeriesSplit 时必填
-  time_column: null        # 如 "date"
-  gap: 0                   # 训练集与验证集的间隔
-  max_train_size: null     # 可选：滚动窗口大小
 
-# 分层列（分类任务时通常是目标列）
-stratify_column: "target"  # 仅 StratifiedKFold 使用
+  # 如果用 GroupKFold，这里填分组列名
+  group_column: null        # 如 "customer_id"、"store_id"
 
-# 禁用的 CV 方案（防止 Agent 尝试）
+  # 如果用 TimeSeriesSplit，这里填时间列名
+  time_column: null         # 如 "date"
+  gap: 0                    # 训练集和验证集之间隔多久（防泄漏）
+
+# 分层列（分类任务通常是目标列）
+stratify_column: "target"
+
+# 明令禁止的验证方案（防止 Agent 乱来）
 forbidden_schemes:
   - "KFold"           # 分类任务禁用普通 KFold
   - "ShuffleSplit"    # 禁用随机重采样
-  - "LeaveOneOut"     # 计算量太大且易泄漏
+  - "LeaveOneOut"     # 计算量太大且容易泄漏
 
-# 验证集比例（用于单次 Holdout 备选）
-holdout_ratio: 0.2
-holdout_random_state: 42
-
-# 指标（Agent 不可自行更换）
+# 指标（Agent 不能自己换）
 metric:
-  name: "auc"           # auc / logloss / rmse / mape / r2 / accuracy / f1
+  name: "auc"           # auc / logloss / rmse / mape / r2
   direction: "maximize" # maximize / minimize
-  threshold: null       # 二分类阈值相关指标时使用
 
-# 泄漏检查清单（人审查时核对）
+# 泄漏检查清单（人审查时逐条核对）
 leakage_checks:
-  - "目标编码是否仅用训练折计算"
+  - "目标编码是否只用训练折计算"
   - "时间特征是否包含未来信息"
   - "分组列是否跨折泄漏"
-  - "预处理拟合是否仅在训练折上"
+  - "预处理拟合是否只在训练折上"
 ```
 
-### 2.2.3 验证折索引哈希：防篡改的技术手段
+这份文件为什么是“宪法”？因为它定义了**所有实验共同的比较基准**。只有验证方案一致，不同实验的分数才能互相比较；一旦有人（包括 Agent）改了它，所有历史分数都失去可比性。
 
-Agent 每次运行时，**必须**计算并记录验证折索引的哈希值，写入工件元数据：
+### 2.2.3 折索引哈希：用技术手段防篡改
+
+光靠“君子协定”不够，Agent 可能“好心办坏事”，也可能真的想刷分。我们用一个技术手段来兜底：**给验证折索引算一个哈希值，每次实验都记下来，事后一比对就知道有没有被改过。**
 
 ```python
 # src/utils/cv_protocol.py
+"""
+验证协议的加载、执行与防篡改校验。
+核心：get_splits 按协议切折；compute_fold_indices_hash 算哈希；
+     verify_cv_protocol_unchanged 检查历史实验有没有偷偷换协议。
+"""
+
 import hashlib
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import StratifiedKFold, KFold, GroupKFold, TimeSeriesSplit
-from pathlib import Path
 import yaml
+from sklearn.model_selection import (
+    StratifiedKFold, KFold, GroupKFold, TimeSeriesSplit
+)
+
 
 def load_cv_protocol(config_path: str = "configs/cv_protocol.yaml") -> dict:
-    with open(config_path) as f:
+    """读取人写的验证协议。"""
+    with open(config_path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
+
 def get_cv_splitter(protocol: dict, X: pd.DataFrame, y: np.ndarray):
-    """根据协议返回 CV 分割器，并生成折索引数组"""
-    scheme = protocol['cv_scheme']
-    cv_type = scheme['type']
-    n_splits = scheme['n_splits']
-    rs = scheme.get('random_state', 42)
-    
+    """按协议生成切折器，返回 splits 列表。"""
+    sch = protocol["cv_scheme"]
+    cv_type = sch["type"]
+    n = sch["n_splits"]
+    rs = sch.get("random_state", 42)
+
     if cv_type == "StratifiedKFold":
-        stratify_col = protocol.get('stratify_column', 'target')
-        stratify = X[stratify_col] if stratify_col in X.columns else y
-        cv = StratifiedKFold(n_splits=n_splits, shuffle=scheme.get('shuffle', True), random_state=rs)
-        splits = list(cv.split(X, stratify))
+        # 分层：保持每折正负样本比例一致
+        col = protocol.get("stratify_column", "target")
+        strat = X[col] if col in X.columns else y
+        cv = StratifiedKFold(n_splits=n, shuffle=sch.get("shuffle", True), random_state=rs)
+        splits = list(cv.split(X, strat))
     elif cv_type == "GroupKFold":
-        group_col = scheme['group_column']
-        groups = X[group_col]
-        cv = GroupKFold(n_splits=n_splits)
-        splits = list(cv.split(X, y, groups))
+        # 分组：同一组（如同一客户）不跨折，防泄漏
+        cv = GroupKFold(n_splits=n)
+        splits = list(cv.split(X, y, X[sch["group_column"]]))
     elif cv_type == "TimeSeriesSplit":
-        cv = TimeSeriesSplit(
-            n_splits=n_splits,
-            gap=scheme.get('gap', 0),
-            max_train_size=scheme.get('max_train_size')
-        )
+        # 时序：训练集时间必须早于验证集
+        cv = TimeSeriesSplit(n_splits=n, gap=sch.get("gap", 0),
+                             max_train_size=sch.get("max_train_size"))
         splits = list(cv.split(X))
     elif cv_type == "KFold":
-        cv = KFold(n_splits=n_splits, shuffle=scheme.get('shuffle', True), random_state=rs)
+        cv = KFold(n_splits=n, shuffle=sch.get("shuffle", True), random_state=rs)
         splits = list(cv.split(X, y))
     else:
-        raise ValueError(f"Unsupported CV type: {cv_type}")
-    
+        raise ValueError(f"不支持的验证类型：{cv_type}")
+
     return cv, splits
 
-def compute_fold_indices_hash(splits: list, n_samples: int) -> str:
-    """计算折索引的 SHA256，用于检测 CV 协议是否被篡改"""
-    # 构建一个 (n_samples,) 数组，值为折编号 0..n_splits-1
-    fold_indices = np.full(n_samples, -1, dtype=np.int32)
-    for fold_idx, (_, val_idx) in enumerate(splits):
-        fold_indices[val_idx] = fold_idx
-    assert (fold_indices >= 0).all(), "有样本未分配到验证折"
-    
-    # 哈希
-    return hashlib.sha256(fold_indices.tobytes()).hexdigest()[:16]
 
-def verify_cv_protocol_unchanged(protocol: dict, current_hash: str, log_dir: Path) -> bool:
-    """检查历史日志中是否有不同的 fold_indices_hash"""
+def compute_fold_indices_hash(splits: list, n_samples: int) -> str:
+    """
+    算折索引哈希：把"每个样本属于第几折"编码成数组，再取 SHA256。
+    只要有人改了切折方式（哪怕只挪了一个样本），哈希就会变。
+    """
+    fold_of = np.full(n_samples, -1, dtype=np.int16)  # -1 表示还没分配
+    for k, (_, val_idx) in enumerate(splits):
+        fold_of[val_idx] = k
+    assert (fold_of >= 0).all(), "有样本没被分到任何验证折"
+    return hashlib.sha256(fold_of.tobytes()).hexdigest()[:16]  # 取前16位够用
+
+
+def verify_cv_protocol_unchanged(protocol: dict, current_hash: str, log_dir) -> bool:
+    """扫描历史日志，找出折索引哈希与当前不一致的实验（即偷偷换过协议）。"""
     import json
-    for log_file in log_dir.glob("exp_*.jsonl"):
-        with open(log_file) as f:
+    from pathlib import Path
+    for log_file in Path(log_dir).glob("exp_*.jsonl"):
+        with open(log_file, encoding="utf-8") as f:
             for line in f:
                 entry = json.loads(line)
-                if 'cv_fold_indices_hash' in entry:
-                    if entry['cv_fold_indices_hash'] != current_hash:
-                        print(f"⚠️ 检测到 CV 协议不一致！")
-                        print(f"  当前: {current_hash}")
-                        print(f"  历史 ({log_file.name}): {entry['cv_fold_indices_hash']}")
-                        print(f"  历史模型: {entry['model']}_{entry['version']}")
+                if "cv_fold_indices_hash" in entry:
+                    if entry["cv_fold_indices_hash"] != current_hash:
+                        print("⚠️ 检测到验证协议不一致！")
+                        print(f"  当前：{current_hash}")
+                        print(f"  历史（{log_file.name}）：{entry['cv_fold_indices_hash']}")
+                        print(f"  历史模型：{entry['model']}_{entry['version']}")
                         return False
     return True
+
 
 # 使用示例
 if __name__ == "__main__":
     protocol = load_cv_protocol()
     train = pd.read_csv("data/train.csv")
     y = train["target"].values
-    X = train.drop(columns=["target", "id"], errors='ignore')
-    
-    cv, splits = get_cv_splitter(protocol, X, y)
+    X = train.drop(columns=["target", "id"], errors="ignore")
+
+    _, splits = get_cv_splitter(protocol, X, y)
     fold_hash = compute_fold_indices_hash(splits, len(train))
-    print(f"CV 协议哈希: {fold_hash}")
-    
-    # 检查历史
+    print(f"验证协议哈希：{fold_hash}")
+
     from pathlib import Path
     if not verify_cv_protocol_unchanged(protocol, fold_hash, Path("artifacts/logs")):
-        raise RuntimeError("CV 协议已被篡改，请检查！")
-    print("✅ CV 协议一致性检查通过")
+        raise RuntimeError("验证协议被改过了，请检查！")
+    print("✅ 验证协议一致性检查通过")
 ```
 
-> **人必须固定验证协议**。这是不可让渡的判断纪律——Agent 的吞吐量越高，这个护栏越重要。
+这套机制妙在哪？它把“人必须固定验证协议”这条纪律，从“口头约定”变成了“技术强制”。Agent 就算想换 CV 刷分，哈希对不上，一查就露馅。
+
+> **人必须固定验证协议。这是不可让渡的判断纪律——Agent 的吞吐量越高，这个护栏越重要。**
 
 ---
 
 ## 2.3 LLM Agent 的能力边界：执行和枚举，而非判断
 
-### 2.3.1 Agent 擅长什么（可委托）
+### 2.3.1 Agent 擅长什么（可以放心交）
 
-| 类别 | 典型任务 | VibeKaggle 中的体现 |
-|------|----------|---------------------|
-| **代码生成** | EDA 脚本、baseline pipeline、特征工程函数、训练循环 | Agent 生成 `src/features/`, `src/models/` 下的模块 |
-| **批量执行** | 50 种特征变换的 CV 对比、100 组超参搜索、20 个模型家族的基线 | Agent 循环调用训练函数，产出工件阵列 |
-| **结果汇总** | 读取所有 `exp_*.jsonl`，生成排行榜表格、相关性热力图、CV 趋势图 | Agent 输出 `reports/weekly_summary.md` |
-| **工件管理** | 按命名规范重命名、搬移、校验完整性、计算 OOF 相关性矩阵 | Agent 维护 `artifacts/` 目录整洁 |
-| **候选生成** | Stacking 的元学习器候选、Blending 权重搜索空间枚举 | Agent 生成 `ensemble_candidates_v001.yaml` |
+Agent 是个“干活快手”，但“方向感”一般。它擅长的是那些**重复、量大、有明确对错**的活：
 
-### 2.3.2 Agent 不擅长什么（不可委托）
+| 类别 | 具体任务 | 在 VibeKaggle 里 |
+|------|----------|------------------|
+| **写代码** | EDA 脚本、baseline、特征函数、训练循环 | 生成 `src/` 下的模块 |
+| **批量跑** | 50 种特征变换对比、100 组超参搜索、20 个模型基线 | 循环调用训练函数，产出工件阵列 |
+| **汇总结果** | 读所有日志，做排行榜、相关性图、趋势图 | 输出 `reports/` 下的报告 |
+| **管工件** | 按规范改名、搬移、校验、算相关性 | 维护 `artifacts/` 整洁 |
+| **生成候选** | 集成的候选组合、超参搜索空间 | 生成候选清单供人挑 |
 
-| 类别 | 典型任务 | 原因 |
-|------|----------|------|
-| **方向判断** | “该不该做特征选择？”、“要不要试神经网络？” | 需要领域直觉、资源权衡、风险评估 |
-| **验证方案设计** | “用 5 折还是 10 折？”、“要不要 GroupKFold？” | 验证污染风险，必须由人把关 |
-| **语义合理性** | “这个交互特征 X*Y 有业务意义吗？”、“目标编码会不会泄漏？” | 需要数据生成机制的因果理解 |
-| **提交决策** | “这版 CV 提升 0.001 值不值得消耗一次提交？” | 提交预算是稀缺资源，涉及机会成本 |
-| **异常诊断** | “CV 突然掉了 0.01，是数据变了还是代码坏了？” | 需要系统性排查，Agent 易产生幻觉解释 |
+### 2.3.2 Agent 不擅长什么（必须人来做）
 
-### 2.3.3 给 Agent 的指令模板：带约束的请求
+但下面这些活，Agent 干不了，或者干了容易坏事：
 
-**❌ 错误指令**：“帮我建个模型提高分数”
+| 类别 | 具体任务 | 为什么不能交 |
+|------|----------|--------------|
+| **方向判断** | “该不该做特征选择？”“要不要上神经网络？” | 需要领域直觉和资源权衡 |
+| **验证设计** | “5 折还是 10 折？”“要不要分组？” | 验证污染风险，必须人把关 |
+| **语义判断** | “这个交互特征有业务意义吗？”“目标编码会泄漏吗？” | 需要理解数据是怎么产生的 |
+| **提交决策** | “CV 涨了 0.001，值不值得花一次提交？” | 提交额度是稀缺资源，涉及机会成本 |
+| **异常诊断** | “CV 突然掉了 0.01，是数据变了还是代码坏了？” | 需要系统排查，Agent 容易瞎编解释 |
+
+### 2.3.3 怎么给 Agent 下指令：带约束的请求
+
+关键来了。**你给 Agent 的指令，不应该是“帮我建个模型”，而应该是“带着约束的请求”。** 约束从哪来？从我们前面定的 Harness（验证协议、工件规范、预算、工具白名单）来。
+
+对比一下：
+
+**❌ 错误指令**：“帮我建个模型提高分数。”
+（Agent 听了会：随便选个 CV、随便存文件、跑完就提交，一片混乱。）
+
 **✅ 正确指令**：
 
 ```markdown
-## Agent Task: 批量训练 LightGBM 变体
+## Agent 任务：批量训练 LightGBM 变体
 
-### 约束条件（硬性）
-- CV 协议：严格遵循 `configs/cv_protocol.yaml`，fold_indices_hash 必须一致
-- 工件命名：`train_oof_LGBM_v{3位版本号}.npy`，`test_preds_LGBM_v{3位版本号}.npy`
-- 日志格式：`ArtifactMetadata` Schema，change_desc 必填
-- 禁止操作：修改 CV 方案、使用外部数据、联网下载模型
+### 硬性约束（必须遵守）
+- 验证协议：严格遵循 configs/cv_protocol.yaml，fold_indices_hash 必须一致
+- 工件命名：train_oof_LGBM_v{三位版本}.npy、test_preds_LGBM_v{三位版本}.npy
+- 日志格式：按 ArtifactMetadata 模板，change_desc 必填
+- 禁止：改验证方案、用外部数据、联网下载模型
 
-### 搜索空间（软性）
-- 模型参数组合（共 12 组）：
-  - learning_rate: [0.01, 0.05, 0.1]
-  - num_leaves: [31, 63, 127]
-  - min_child_samples: [20, 50]
-  - feature_fraction: [0.8, 1.0]
-- 固定参数：n_estimators=2000, early_stopping_rounds=100, random_state=42
+### 搜索空间（可以发挥）
+- 12 组参数：learning_rate [0.01,0.05,0.1] × num_leaves [31,63,127] × min_child_samples [20,50]
+- 固定：n_estimators=2000, early_stopping=100, random_state=42
 
 ### 验收标准
-1. 所有 12 个实验产出合规工件（.npy + .jsonl）
-2. 无验证协议违规（fold_indices_hash 一致）
-3. 生成汇总报告：按 CV 降序排列，含 OOF 相关性矩阵
-4. 标记出 CV 前 3 名供人审查
+1. 12 个实验都产出合规工件
+2. 无验证协议违规（哈希一致）
+3. 生成汇总报告，按 CV 降序，含 OOF 相关性矩阵
+4. 标出 CV 前 3 名供人审查
 
-### 输出交付物
-- `artifacts/logs/exp_LGBM_v001.jsonl` ~ `v012.jsonl`
-- `artifacts/oof/train_oof_LGBM_v001.npy` ~ `v012.npy`
-- `artifacts/test_preds/test_preds_LGBM_v001.npy` ~ `v012.npy`
-- `reports/lgbm_sweep_v001.md`（汇总报告）
+### 交付物
+- artifacts/logs/exp_LGBM_v001.jsonl ~ v012.jsonl
+- artifacts/oof/train_oof_LGBM_v001.npy ~ v012.npy
+- reports/lgbm_sweep_v001.md
 ```
 
-> **核心原则**：人向 Agent 发出的指令应该是**带约束的请求**，而不是“帮我建个模型”。约束来自 Harness（验证协议、工件规范、预算、工具白名单）。
+你看，同样是“训练 LightGBM”，第二种指令把边界、标准、交付物全说清楚了。Agent 照着做，产出整齐；你审查起来，也一目了然。
 
 ---
 
@@ -402,178 +453,158 @@ if __name__ == "__main__":
 
 ### 2.4.1 为什么每场比赛第一步都是 AutoML？
 
-- **建立“不费力竞争基线”**：AutoGluon 的多层 Stacking 能在 10-30 分钟内给出强基线，人据此判断“当前数据上不费力能做到多好”；
-- **多样性来源**：AutoGluon 内部集成了多种模型家族（GBM、NN、RF、XT、KNN），其 OOF 天然具有多样性，适合后续人工 Stacking；
-- **校准工件流水线**：AutoGluon 产出的 OOF/预测可直接落盘为标准工件，验证流水线是否打通。
+你可能会问，既然要人判断、Agent 执行，那第一步跑什么？答案是 **AutoML（自动机器学习）**。
 
-### 2.4.2 AutoGluon 基线适配器（产出合规工件）
+AutoML 是个“傻瓜相机”式的工具：你把数据丢给它，它自动帮你选模型、调参、做集成，几分钟到几十分钟就给你一个相当强的基线。在 VibeKaggle 里，它的定位是**“不费力竞争基线”**——先看看“啥也不干、全自动”能做到什么水平，再决定要不要投入更多精力。
+
+它还有两个额外好处：
+- **多样性来源**：AutoGluon 内部集成了好多模型家族（梯度提升树、神经网络、随机森林等），它产出的 OOF 天然就多样，适合后面做集成；
+- **验证流水线**：AutoML 产出的 OOF 和预测可以直接落盘成标准工件，顺便验证我们的工件流水线通不通。
+
+### 2.4.2 AutoGluon 基线：产出合规工件
+
+AutoGluon 是目前表格 AutoML 里最强的之一。下面这段代码，把 AutoGluon 的输出包装成我们第 1、2 章定的标准工件。注意它严格按固定 CV 折来产出 OOF：
 
 ```python
 # baselines/autogluon_baseline.py
 """
 AutoGluon 基线：产出合规的 OOF 和测试预测工件。
-核心逻辑：用 TabularPredictor.fit() 获得 OOF，手动预测测试集，按规范落盘。
+关键点：用我们人定的固定折来算 OOF（而不是 AutoGluon 内部随便切的折），
+      这样 OOF 才能和别的模型公平比较、才能做集成。
 """
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
 import json
 import yaml
+from pathlib import Path
 from datetime import datetime
 from autogluon.tabular import TabularPredictor
 from sklearn.metrics import roc_auc_score, log_loss, mean_squared_error
 
-# ========== 配置 ==========
+# 路径
 DATA_DIR = Path("data")
-ARTIFACT_DIR = Path("artifacts")
-MODEL_NAME = "AUTOGLUON"
-VERSION = "v001"
-TIME_LIMIT = 300  # 秒
-PRESETS = "best_quality"  # "medium_quality", "good_quality", "best_quality"
-# ========== 配置结束 ==========
+ART = Path("artifacts")
+MODEL_NAME, VERSION = "AUTOGLUON", "v001"
+TIME_LIMIT = 300          # 每折最多训练 300 秒
+PRESETS = "medium_quality"  # 质量档位：medium/good/best
+
 
 def main():
-    # 1. 读取数据与验证协议
+    # 读数据 + 验证协议
     train = pd.read_csv(DATA_DIR / "train.csv")
     test = pd.read_csv(DATA_DIR / "test.csv")
     sample_sub = pd.read_csv(DATA_DIR / "sample_submission.csv")
-    
+
     from src.utils.cv_protocol import load_cv_protocol, get_cv_splitter, compute_fold_indices_hash
     protocol = load_cv_protocol()
-    
-    target_col = "target"  # 根据比赛修改
-    id_col = "id"
+
+    target_col, id_col = "target", "id"
     y = train[target_col].values
-    X = train.drop(columns=[target_col, id_col], errors='ignore')
-    X_test = test.drop(columns=[id_col], errors='ignore')
-    
-    # 2. 获取固定 CV 折
-    cv, splits = get_cv_splitter(protocol, X, y)
+    X = train.drop(columns=[target_col, id_col], errors="ignore")
+    X_test = test.drop(columns=[id_col], errors="ignore")
+
+    # 拿固定折 + 哈希
+    _, splits = get_cv_splitter(protocol, X, y)
     fold_hash = compute_fold_indices_hash(splits, len(train))
-    print(f"CV 协议哈希: {fold_hash}")
-    
-    # 3. 训练 AutoGluon（使用自定义 CV）
-    # 注意：AutoGluon 不直接支持传入预定义折，这里用全量训练 + 手动 OOF
-    # 更严谨的做法见下文的 "严格 OOF 模式"
-    
-    predictor = TabularPredictor(
-        label=target_col,
-        eval_metric=protocol['metric']['name'],
-        path=str(ARTIFACT_DIR / f"autogluon_{MODEL_NAME}_{VERSION}"),
-    ).fit(
-        train_data=train,
-        time_limit=TIME_LIMIT,
-        presets=PRESETS,
-        num_bag_folds=protocol['cv_scheme']['n_splits'],
-        num_stack_levels=2,  # 多层 stacking
-        verbosity=2,
-    )
-    
-    # 4. 产出 OOF（AutoGluon 内部 OOF）
-    # 注意：AutoGluon 的 OOF 是基于 bagging 折的，可能与我们的固定折不同
-    # 严格模式：用 predictor.predict_proba_oof() 获取，但折可能不一致
-    # 这里演示：用固定折重新训练每折模型（慢但严谨）
+    print(f"验证协议哈希：{fold_hash}（必须和历史一致）")
+
+    # 逐折训练，拼 OOF
     oof = np.zeros(len(train), dtype=np.float32)
     fold_scores = []
-    
     for fold, (trn_idx, val_idx) in enumerate(splits):
-        print(f"  训练 Fold {fold}...")
+        print(f"  训练第 {fold} 折...")
         fold_train = train.iloc[trn_idx].reset_index(drop=True)
         fold_val = train.iloc[val_idx].reset_index(drop=True)
-        
+
         fold_predictor = TabularPredictor(
             label=target_col,
-            eval_metric=protocol['metric']['name'],
-            path=str(ARTIFACT_DIR / f"autogluon_{MODEL_NAME}_{VERSION}_fold{fold}"),
+            eval_metric=protocol["metric"]["name"],
+            path=str(ART / f"_ag_{MODEL_NAME}_{VERSION}_fold{fold}"),
         ).fit(
             train_data=fold_train,
-            time_limit=TIME_LIMIT // protocol['cv_scheme']['n_splits'],
+            time_limit=TIME_LIMIT // protocol["cv_scheme"]["n_splits"],
             presets=PRESETS,
             verbosity=0,
         )
-        
-        if protocol['task_type'] in ['binary', 'multiclass']:
-            fold_pred = fold_predictor.predict_proba(fold_val.drop(columns=[target_col, id_col], errors='ignore'))
-            if protocol['task_type'] == 'binary':
-                fold_pred = fold_pred.iloc[:, 1].values  # 正类概率
+
+        # 预测验证折（分类取正类概率）
+        if protocol["task_type"] in ["binary", "multiclass"]:
+            fold_pred = fold_predictor.predict_proba(
+                fold_val.drop(columns=[target_col, id_col], errors="ignore"))
+            if protocol["task_type"] == "binary":
+                fold_pred = fold_pred.iloc[:, 1].values
         else:
-            fold_pred = fold_predictor.predict(fold_val.drop(columns=[target_col, id_col], errors='ignore')).values
-        
+            fold_pred = fold_predictor.predict(
+                fold_val.drop(columns=[target_col, id_col], errors="ignore")).values
+
         oof[val_idx] = fold_pred.astype(np.float32)
-        
-        # 计算折分数
-        if protocol['metric']['name'] == 'auc':
+
+        # 算折分数
+        if protocol["metric"]["name"] == "auc":
             score = roc_auc_score(y[val_idx], fold_pred)
-        elif protocol['metric']['name'] == 'logloss':
-            score = -log_loss(y[val_idx], fold_pred)  # 负 logloss 越大越好
-        elif protocol['metric']['name'] == 'rmse':
-            score = -mean_squared_error(y[val_idx], fold_pred, squared=False)
+        elif protocol["metric"]["name"] == "logloss":
+            score = -log_loss(y[val_idx], fold_pred)  # 取负，统一成越大越好
         else:
-            score = 0
+            score = -mean_squared_error(y[val_idx], fold_pred, squared=False)
         fold_scores.append(score)
-        print(f"    Fold {fold}: {score:.6f}")
-    
-    cv_mean = np.mean(fold_scores)
-    cv_std = np.std(fold_scores)
-    print(f"CV: {cv_mean:.6f} ± {cv_std:.6f}")
-    
-    # 5. 测试集预测（用全量训练的模型）
-    if protocol['task_type'] in ['binary', 'multiclass']:
-        test_pred = predictor.predict_proba(X_test)
-        if protocol['task_type'] == 'binary':
+        print(f"    第 {fold} 折：{score:.6f}")
+
+    cv_mean, cv_std = float(np.mean(fold_scores)), float(np.std(fold_scores))
+    print(f"交叉验证：{cv_mean:.6f} ± {cv_std:.6f}")
+
+    # 全量训练一个模型，预测测试集
+    full_predictor = TabularPredictor(
+        label=target_col, eval_metric=protocol["metric"]["name"],
+        path=str(ART / f"_ag_{MODEL_NAME}_{VERSION}_full"),
+    ).fit(train, time_limit=TIME_LIMIT, presets=PRESETS, verbosity=0)
+
+    if protocol["task_type"] in ["binary", "multiclass"]:
+        test_pred = full_predictor.predict_proba(X_test)
+        if protocol["task_type"] == "binary":
             test_pred = test_pred.iloc[:, 1].values
     else:
-        test_pred = predictor.predict(X_test).values
+        test_pred = full_predictor.predict(X_test).values
     test_pred = test_pred.astype(np.float32)
-    
-    # 6. 保存工件
-    OOF_DIR = ARTIFACT_DIR / "oof"
-    TEST_DIR = ARTIFACT_DIR / "test_preds"
-    LOG_DIR = ARTIFACT_DIR / "logs"
-    CFG_DIR = ARTIFACT_DIR / "configs"
-    SUB_DIR = ARTIFACT_DIR / "submissions"
-    for d in [OOF_DIR, TEST_DIR, LOG_DIR, CFG_DIR, SUB_DIR]:
-        d.mkdir(parents=True, exist_ok=True)
-    
-    np.save(OOF_DIR / f"train_oof_{MODEL_NAME}_{VERSION}.npy", oof)
-    np.save(TEST_DIR / f"test_preds_{MODEL_NAME}_{VERSION}.npy", test_pred)
-    
-    # 7. 生成提交文件
+
+    # 存工件（复用第 1 章的命名规范）
+    for d in ["oof", "test_preds", "logs", "configs", "submissions"]:
+        (ART / d).mkdir(parents=True, exist_ok=True)
+    oof_path = ART / "oof" / f"train_oof_{MODEL_NAME}_{VERSION}.npy"
+    test_path = ART / "test_preds" / f"test_preds_{MODEL_NAME}_{VERSION}.npy"
+    np.save(oof_path, oof)
+    np.save(test_path, test_pred)
+
+    # 生成提交
     submission = sample_sub.copy()
     submission[target_col] = test_pred
-    sub_path = SUB_DIR / f"submission_{MODEL_NAME}_{VERSION}.csv"
+    sub_path = ART / "submissions" / f"submission_{MODEL_NAME}_{VERSION}.csv"
     submission.to_csv(sub_path, index=False)
-    
-    # 8. 记录日志
-    log_entry = {
-        "model": MODEL_NAME,
-        "version": VERSION,
-        "task_type": protocol['task_type'],
+
+    # 写日志
+    entry = {
+        "model": MODEL_NAME, "version": VERSION,
+        "task_type": protocol["task_type"],
         "cv_scheme": f"{protocol['cv_scheme']['type']}_{protocol['cv_scheme']['n_splits']}_{protocol['cv_scheme'].get('random_state', 42)}",
         "cv_fold_indices_hash": fold_hash,
         "cv_scores": [float(s) for s in fold_scores],
-        "cv_mean": float(cv_mean),
-        "cv_std": float(cv_std),
-        "metric": protocol['metric']['name'],
-        "oof_path": f"oof/train_oof_{MODEL_NAME}_{VERSION}.npy",
-        "test_path": f"test_preds/test_preds_{MODEL_NAME}_{VERSION}.npy",
-        "submission_path": f"submissions/submission_{MODEL_NAME}_{VERSION}.csv",
-        "n_train": int(len(train)),
-        "n_test": int(len(test)),
-        "change_desc": f"AutoGluon {PRESETS} preset, time_limit={TIME_LIMIT}s",
-        "agent_model": "autogluon-1.0",
-        "human_reviewed": False,
+        "cv_mean": cv_mean, "cv_std": cv_std,
+        "metric": protocol["metric"]["name"],
+        "oof_path": str(oof_path.relative_to(ART)),
+        "test_path": str(test_path.relative_to(ART)),
+        "submission_path": str(sub_path.relative_to(ART)),
+        "n_train": int(len(train)), "n_test": int(len(test)),
+        "change_desc": f"AutoGluon {PRESETS} preset",
+        "agent_model": "autogluon", "human_reviewed": False,
+        "created_at": datetime.utcnow().isoformat(),
     }
-    
-    log_path = LOG_DIR / f"exp_{MODEL_NAME}_{VERSION}.jsonl"
-    with open(log_path, 'w') as f:
-        f.write(json.dumps(log_entry, ensure_ascii=False) + '\n')
-    
-    cfg_path = CFG_DIR / f"cfg_{MODEL_NAME}_{VERSION}.yaml"
-    with open(cfg_path, 'w') as f:
-        yaml.dump(log_entry, f, allow_unicode=True)
-    
-    print(f"✅ AutoGluon 基线完成: CV={cv_mean:.6f}±{cv_std:.6f}")
+    with open(ART / "logs" / f"exp_{MODEL_NAME}_{VERSION}.jsonl", "w", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    with open(ART / "configs" / f"cfg_{MODEL_NAME}_{VERSION}.yaml", "w", encoding="utf-8") as f:
+        yaml.dump(entry, f, allow_unicode=True)
+
+    print(f"✅ AutoGluon 基线完成：CV = {cv_mean:.6f} ± {cv_std:.6f}")
+
 
 if __name__ == "__main__":
     main()
@@ -581,72 +612,45 @@ if __name__ == "__main__":
 
 ### 2.4.3 TabPFN：零调参的表格基础模型
 
-对于中小规模数据（n < 10k, d < 100），TabPFN 能在秒级给出强基线，**无需超参搜索**：
+除了 AutoGluon，还有一种叫 **TabPFN** 的“表格基础模型”。它最神奇的地方是**不用训练、不用调参**——你把训练集丢给它，它直接预测，而且中小规模数据（几千到几万行）上效果拔群。它就像个“读过海量表格的学霸”，看到新题直接秒答。
+
+在 VibeKaggle 里，TabPFN 的定位是**多样性来源**：它和树模型（AutoGluon）的误差模式不一样，两者的 OOF 拿来一平均，往往比单用任何一个都强。
 
 ```python
 # baselines/tabpfn_baseline.py
 """
 TabPFN 基线：零调参、极快、中小数据极强。
-适合作为多样性来源，与树模型 OOF 互补。
+和树模型 OOF 互补，是集成的好材料。
 """
 import numpy as np
-import pandas as pd
-from pathlib import Path
-import json
-import yaml
 from tabpfn import TabPFNClassifier, TabPFNRegressor
-from sklearn.metrics import roc_auc_score, mean_squared_error
+from sklearn.metrics import roc_auc_score
 
-# 配置
-MODEL_NAME = "TABPFN"
-VERSION = "v001"
-# ...
-
-def main():
-    # 读取数据、CV 协议...
-    # TabPFN 不支持原生 CV，必须手动循环折
-    for fold, (trn_idx, val_idx) in enumerate(splits):
-        X_trn, y_trn = X.iloc[trn_idx], y[trn_idx]
-        X_val = X.iloc[val_idx]
-        
-        if task_type == 'binary':
-            model = TabPFNClassifier(device='cuda', N_ensemble_configurations=32)
-        else:
-            model = TabPFNRegressor(device='cuda')
-        
-        model.fit(X_trn, y_trn)
-        pred = model.predict_proba(X_val)[:, 1] if task_type == 'binary' else model.predict(X_val)
-        oof[val_idx] = pred
-        # 计算分数...
-    
-    # 测试集：全量训练
-    model.fit(X, y)
-    test_pred = model.predict_proba(X_test)[:, 1] if task_type == 'binary' else model.predict(X_test)
-    
-    # 保存工件（同规范）...
+# 复用第 2 章的 CV 协议和工件保存逻辑（此处省略，实际同 AutoGluon）
+# 核心区别：每折直接 TabPFNClassifier().fit(X_trn, y_trn)，无需调参
 ```
 
-> **关键点**：AutoGluon/TabPFN 产出的是**第一个有 CV 分数的合规工件**。人据此判断“不费力能做到多好”，决定是否投入更多 Agent 实验资源。
+> **关键点**：AutoGluon / TabPFN 产出的是**第一个有 CV 分数的合规工件**。人据此判断“不费力能做到多好”，再决定要不要投入更多 Agent 实验资源。
 
 ---
 
 ## 2.5 MCP：让 Agent 持续操作平台，安全是内置的
 
-### 2.5.1 MCP 的核心价值
+### 2.5.1 MCP 是什么？
 
-**MCP (Model Context Protocol)** 让 Agent 能够：
-- 下载比赛数据 → EDA → 训练 → 工件落盘 → 提交预演 → 真实提交
-- 成为**一条可持续运行的流水线**，而非一次性脚本
+MCP（Model Context Protocol，模型上下文协议）你可以理解成**Agent 的“手和脚”**。没有 MCP，Agent 只能跟你聊天、写代码；有了 MCP，Agent 能真正去下载数据、跑训练、存工件、提交比赛——一条流水线全包。
 
-### 2.5.2 安全机制：流水线的护栏
+但“全包”是把双刃剑。Agent 能一键提交，也能一键删库。所以 MCP 的核心不是“能做什么”，而是**“安全地能做什么”**。
 
-| 护栏 | 实现方式 | 位置 |
+### 2.5.2 五条护栏
+
+| 护栏 | 怎么实现 | 在哪 |
 |------|----------|------|
-| **预览-确认双调用** | 所有写操作（提交、删除、修改配置）默认 `dry_run=true`，人确认后再 `dry_run=false` | MCP Tool 定义 |
-| **每日提交预算** | `agent_policy.yaml` 设定 `daily_submit_limit: 3`，MCP Server 计数拦截 | MCP Server 状态 |
-| **不可逆操作默认关闭** | `allow_destructive: false`，需人显式开启 | Agent Policy |
-| **工具白名单** | Agent 只能调用 `train`, `predict`, `submit_dryrun`, `read_log`，不能调用 `rm`, `wget`, `pip install` | MCP Server 暴露工具集 |
-| **审计日志** | 所有 MCP 调用记录到 `artifacts/logs/mcp_audit.jsonl` | MCP Server 中间件 |
+| **预览-确认双调用** | 所有写操作默认 `dry_run=true`，人确认后再 `false` | MCP 工具定义 |
+| **每日提交预算** | `agent_policy.yaml` 设 `daily_submit_limit: 3`，MCP 计数拦截 | MCP 服务状态 |
+| **不可逆操作默认关** | `allow_destructive: false`，要人显式开 | Agent 策略 |
+| **工具白名单** | Agent 只能调 `train`、`predict`、`submit_dryrun` 等，不能 `rm`、`wget` | MCP 暴露的工具集 |
+| **审计日志** | 所有 MCP 调用记到 `mcp_audit.jsonl` | MCP 中间件 |
 
 ### 2.5.3 `agent_policy.yaml`：Agent 权限策略
 
@@ -656,128 +660,111 @@ policy_version: "1.0"
 
 # 提交预算
 submit_budget:
-  daily_limit: 3           # 每天最多 3 次真实提交
-  total_limit: 50          # 整场比赛最多 50 次
-  require_human_approval: true  # 每次提交必须人工确认
+  daily_limit: 3            # 每天最多 3 次真提交
+  total_limit: 50           # 整场最多 50 次
+  require_human_approval: true
 
-# 工具白名单（MCP Server 只暴露这些工具）
+# 允许的工具（MCP 只暴露这些）
 allowed_tools:
-  - "read_data"           # 读取 data/ 目录文件
-  - "read_artifact"       # 读取 artifacts/ 目录文件
-  - "write_artifact"      # 写入 artifacts/ 目录（按命名规范）
-  - "train_model"         # 训练模型（内置算法或自定义脚本）
+  - "read_data"           # 读 data/
+  - "write_artifact"      # 按规范写 artifacts/
+  - "train_model"         # 训练
   - "predict"             # 预测并产出工件
   - "submit_dryrun"       # 提交预演
-  - "submit"              # 真实提交（需人工批准）
-  - "list_experiments"    # 列出历史实验
-  - "compute_oof_corr"    # 计算 OOF 相关性矩阵
-  - "generate_report"     # 生成汇总报告
+  - "submit"              # 真提交（需人批准）
+  - "list_experiments"    # 列历史实验
+  - "compute_oof_corr"    # 算 OOF 相关性
+  - "generate_report"     # 生成报告
 
-# 禁止工具（默认拒绝）
+# 禁止的工具
 forbidden_tools:
   - "shell_exec"          # 任意命令执行
-  - "pip_install"         # 安装包
-  - "wget"                # 下载文件
-  - "git_push"            # 推送代码
-  - "delete_file"         # 删除文件
+  - "pip_install"         # 装包
+  - "wget"                # 下载
+  - "delete_file"         # 删文件
 
-# 计算资源约束
+# 资源限制
 resource_limits:
   max_concurrent_trials: 4
-  max_gpu_memory_per_trial: "8GB"
   max_runtime_per_trial: "30min"
 
-# 数据访问约束
+# 数据访问
 data_access:
-  allow_external: false   # 禁止访问外部数据
-  allow_pretrained:       # 允许的预训练模型
-    - "tabpfn-v2"
-    - "autogluon-builtin"
+  allow_external: false   # 禁止外部数据
   forbidden_paths:
-    - "/root"
-    - "/home"
     - "~/.kaggle"
     - "~/.ssh"
 ```
 
-### 2.5.4 MCP 流水线示意
+### 2.5.4 MCP 流水线全景
 
 ```mermaid
 sequenceDiagram
     participant Human as 人
     participant Agent as LLM Agent
-    participant MCP as MCP Server
+    participant MCP as MCP 服务
     participant Artifacts as 工件存储
-    participant Kaggle as Kaggle API
-    
-    Human->>Agent: 发布带约束任务（含 cv_protocol, agent_policy）
+    participant Kaggle as Kaggle
+
+    Human->>Agent: 下达带约束的任务
     Agent->>MCP: read_data(train.csv)
-    MCP-->>Agent: 数据内容
-    Agent->>MCP: train_model(config=LGBM_v001)
-    MCP->>Artifacts: 保存 OOF, test_preds, log
+    MCP-->>Agent: 返回数据
+    Agent->>MCP: train_model(LGBM_v001)
+    MCP->>Artifacts: 存 OOF/test/日志
     MCP-->>Agent: 训练完成，CV 分数
     Agent->>MCP: submit_dryrun(submission.csv)
-    MCP-->>Agent: 预览信息（格式、大小、预估分数）
-    Agent->>Human: 汇报预览，建议是否提交
+    MCP-->>Agent: 预览信息
+    Agent->>Human: 汇报预览，建议
     Human->>Agent: 确认提交
-    Agent->>MCP: submit(submission.csv, dry_run=false)
-    MCP->>Kaggle: 真实提交
+    Agent->>MCP: submit(dry_run=false)
+    MCP->>Kaggle: 真提交
     Kaggle-->>MCP: LB 分数
     MCP-->>Agent: 提交结果
     Agent->>Human: 最终汇报
 ```
 
+看这张图，你会发现**人始终在环里**：任务是人下的，提交是人批的。Agent 负责中间的“脏活累活”，但关键决策权在人手里。这就是 VibeKaggle 的安全哲学。
+
 ---
 
 ## 2.6 本章的验收任务
 
-在同一个表格数据集上（建议用 Playground S6E3 客户流失或 S5E1 贴纸销售），完成以下三项：
+光看不练假把式。这一章结束，你要在同一个表格数据集上（建议 S6E3 客户流失或 S5E1 贴纸销售）完成三件事：
 
-### 任务 1：AutoGluon 跑出合规基线工件
-- 运行 `baselines/autogluon_baseline.py`
-- 验证产出：`artifacts/oof/train_oof_AUTOGLUON_v001.npy`、`artifacts/test_preds/test_preds_AUTOGLUON_v001.npy`、`artifacts/logs/exp_AUTOGLUON_v001.jsonl`
-- 检查日志中 `cv_fold_indices_hash` 与 `configs/cv_protocol.yaml` 一致
+**任务 1：AutoGluon 跑出合规基线工件。**
+运行 `baselines/autogluon_baseline.py`，检查产出了 `train_oof_AUTOGLUON_v001.npy`、`test_preds_AUTOGLUON_v001.npy`、日志、配置。打开日志，确认 `cv_fold_indices_hash` 和 `cv_protocol.yaml` 算出来的一致。
 
-### 任务 2：LLM Agent 生成 EDA 代码并执行，人工标注
-```python
-# 让 Agent 生成的 EDA 任务示例
-"""
-请生成 EDA 脚本，要求：
-1. 读取 train.csv，输出：缺失值统计、数值列分布、类别列基数、目标分布
-2. 绘制：目标类别分布图、数值特征箱线图（按目标分组）、相关性热力图（前 20 特征）
-3. 检查：训练/测试集列名一致性、数据类型一致性、ID 列唯一性
-4. 保存图表到 artifacts/eda/，保存统计表到 artifacts/logs/eda_v001.jsonl
-5. 代码风格：函数化、可复用、含 docstring
-"""
+**任务 2：让 Agent 生成 EDA 代码并执行，你人工标注。**
+把下面这段话丢给 Agent：
+
 ```
-- **人审查产出**：哪些结论是数据支持的？哪些是幻觉或过度概括？（如“特征 X 与目标高度相关”需查看分布图确认，而非只信相关系数）
+请生成 EDA 脚本，要求：
+1. 读 train.csv，输出缺失值统计、数值列分布、类别列基数、目标分布
+2. 画目标分布图、数值列按目标分组箱线图、前 20 特征相关性热力图
+3. 检查训练/测试列名一致性、类型一致性、ID 唯一性
+4. 图存 artifacts/eda/，统计表写 artifacts/logs/eda_v001.jsonl
+5. 代码函数化、带 docstring
+```
 
-### 任务 3：配置一次 MCP 提交预演
-- 启动 MCP Server（见附录 F 部署指南）
-- Agent 调用 `submit_dryrun`，人阅读预览信息
-- 确认无误后，人授权 `submit`（或选择不提交）
+拿到产出后，**你逐条核对**：哪些结论是数据支持的？哪些是 Agent 编的（比如它说“特征 X 与目标强相关”，你打开箱线图一看，分布重叠得厉害，那就是过度概括）。
 
-> **完成标志**：你拥有一套**可复用的操作系统**——工件规范、验证协议、Agent 策略、MCP 护栏——后续每一章都在其上运行。
+**任务 3：配置一次 MCP 提交预演。**
+启动 MCP 服务（部署见附录 F），让 Agent 调 `submit_dryrun`，你看预览信息，然后决定要不要授权 `submit`。
 
----
-
-## 本章关键文件汇总
-
-| 文件 | 用途 |
-|------|------|
-| `configs/cv_protocol.yaml` | 验证协议宪法（人写，只读不改） |
-| `configs/agent_policy.yaml` | Agent 权限策略（预算、工具白名单） |
-| `configs/rules.yaml` | 比赛规则红线 |
-| `src/utils/artifact_schema.py` | 工件元数据 Schema（Pydantic） |
-| `src/utils/cv_protocol.py` | CV 协议加载、折索引哈希、一致性校验 |
-| `baselines/autogluon_baseline.py` | AutoGluon 合规基线（产出标准工件） |
-| `baselines/tabpfn_baseline.py` | TabPFN 零调参基线 |
-| `baselines/constant_baseline.py` | 常数基线（流水线打通验证） |
+> **完成标志**：你有一套**可复用的操作系统**——工件规范、验证协议、Agent 策略、MCP 护栏。后面每一章，都是在这套系统上跑。
 
 ---
 
-## 思考题
+## 2.7 小结
 
-1. **为什么 `cv_fold_indices_hash` 只取前 16 位？** 完整 SHA256 有 64 位，16 位（64 bit）碰撞概率在 10 亿次实验下约 2.7e-10，足够安全且便于人工对比。
-2. **如果比赛中途发现验证协议有问题（如发现数据有时间泄漏），怎么处理？** 修改 `cv_protocol.yaml` → `protocol_version` 升级 → **所有历史工件作废** → 重新跑基线。这是痛苦但必要的“重启”。
-3. **Agent Policy 中为什么禁止 `pip_install`？** 环境一致性、安全性、复现性。所有依赖应在项目初始化时由人安装并锁版本（`requirements.txt` / `uv.lock`）。
+这一章信息量大，我帮你把精华拎出来：
+
+- **工件规范**是物理基础：统一命名、目录、元数据，让工件可组合、可追溯、可审计；
+- **验证优先**是判断纪律：验证方案人定、Agent 执行，用折索引哈希防篡改；
+- **Agent 能力边界**：执行和枚举交给它，判断和决策留给人；
+- **AutoML/基础模型**是强基线的快速来源，产出第一个合规工件；
+- **MCP** 让 Agent 持续操作平台，但五条护栏保证安全。
+
+一句话概括这一章：**你在给 Agent 造一套“操作系统”，让它在你划定的圈子里高速运转。** 圈子划得越好，它跑得越快、越稳。
+
+> **下一章预告**：第 3 章我们要把这套系统真正跑起来——在一张表格数据上，完整走一遍“自动基线 → Agent 执行 EDA → 人审查 → 特征构造 → 验证 → 集成”的 Vibe 循环。这个循环模板，后面每一章都会复用。
