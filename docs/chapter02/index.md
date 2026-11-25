@@ -480,54 +480,54 @@ Agent 是个“干活快手”，但“方向感”一般。它擅长的是那�
 
 **✅ 正确指令**：
 
-```markdown
-## Agent 任务：批量训练 LightGBM 变体
-
-### 硬性约束（必须遵守）
-- 验证协议：严格遵循 configs/cv_protocol.yaml，fold_indices_hash 必须一致
-- 工件命名：train_oof_LGBM_v{三位版本}.npy、test_preds_LGBM_v{三位版本}.npy
-- 日志格式：按 ArtifactMetadata 模板，change_desc 必填
-- 禁止：改验证方案、用外部数据、联网下载模型
-
-### 搜索空间（可以发挥）
-- 12 组参数：learning_rate [0.01,0.05,0.1] × num_leaves [31,63,127] × min_child_samples [20,50]
-- 固定：n_estimators=2000, early_stopping=100, random_state=42
-
-### 验收标准
-1. 12 个实验都产出合规工件
-2. 无验证协议违规（哈希一致）
-3. 生成汇总报告，按 CV 降序，含 OOF 相关性矩阵
-4. 标出 CV 前 3 名供人审查
-
-### 交付物
-- artifacts/logs/exp_LGBM_v001.jsonl ~ v012.jsonl
-- artifacts/oof/train_oof_LGBM_v001.npy ~ v012.npy
-- reports/lgbm_sweep_v001.md
-```
+> **提示词**：
+>
+> #### Agent 任务：批量训练 LightGBM 变体
+>
+> ##### 硬性约束（必须遵守）
+> - 验证协议：严格遵循 configs/cv_protocol.yaml，fold_indices_hash 必须一致
+> - 工件命名：train_oof_LGBM_v{三位版本}.npy、test_preds_LGBM_v{三位版本}.npy
+> - 日志格式：按 ArtifactMetadata 模板，change_desc 必填
+> - 禁止：改验证方案、用外部数据、联网下载模型
+>
+> ##### 搜索空间（可以发挥）
+> - 12 组参数：learning_rate [0.01,0.05,0.1] × num_leaves [31,63,127] × min_child_samples [20,50]
+> - 固定：n_estimators=2000, early_stopping=100, random_state=42
+>
+> ##### 验收标准
+> 1. 12 个实验都产出合规工件
+> 2. 无验证协议违规（哈希一致）
+> 3. 生成汇总报告，按 CV 降序，含 OOF 相关性矩阵
+> 4. 标出 CV 前 3 名供人审查
+>
+> ##### 交付物
+> - artifacts/logs/exp_LGBM_v001.jsonl ~ v012.jsonl
+> - artifacts/oof/train_oof_LGBM_v001.npy ~ v012.npy
+> - reports/lgbm_sweep_v001.md
 
 你看，同样是“训练 LightGBM”，第二种指令把边界、标准、交付物全说清楚了。Agent 照着做，产出整齐；你审查起来，也一目了然。
 
 而且，好的 Agent 收到这种带约束的指令后，会主动把自己的“不确定”暴露给你，而不是闷头乱干。假设你把上面那段任务丢给模型，它可能这样回应：
 
-```
+> **AI 输出**
+>
 > （思考过程）任务里给了固定 CV 协议、命名规范、12 组搜索空间。
 > 我需要确认几件事：1) cv_protocol.yaml 里 task_type 是不是 binary，
 > 决定用 predict_proba 还是 predict；2) 数据里目标列是不是叫 target；
 > 3) GPU 是否可用。这些如果不确定，应该先问人，而不是假设。
-
-收到。开始前我先确认三点，避免跑错方向：
-
-1. 验证协议 configs/cv_protocol.yaml 里 task_type=binary、metric=auc，
-   我会据此用 predict_proba 取正类概率。如果和你的数据不符，请先告诉我。
-2. 默认目标列名是 target、ID 列是 id，如果没有这两列我会报错停下，
-   不会自作主张改列名。
-3. 我会严格复用协议里的 folds，并在每个实验日志里写入
-   cv_fold_indices_hash，方便你事后审计。
-
-另外说明一个我不确定、需要你判断的点：min_child_samples=20/50
-这档在 16 万行数据上可能偏小，容易过拟合。我先按你给的跑，
-如果 12 组里前几名 CV 都不稳定，建议你再补一档 100。要不要现在就加？
-```
+>
+> 收到。开始前我先确认三点，避免跑错方向：
+>
+> 1. 验证协议 configs/cv_protocol.yaml 里 task_type=binary、metric=auc，
+>    我会据此用 predict_proba 取正类概率。如果和你的数据不符，请先告诉我。
+> 2. 默认目标列名是 target、ID 列是 id，如果没有这两列我会报错停下，
+>    不会自作主张改列名。
+> 3. 我会严格复用协议里的 folds，并在每个实验日志里写入
+>    cv_fold_indices_hash，方便你事后审计。
+>
+> 另外说明一个我不确定、需要你判断的点：min_child_samples=20/50
+> 这档在 16 万行数据上可能偏小，容易过拟合。我先按你给的跑，
+> 如果 12 组里前几名 CV 都不稳定，建议你再补一档 100。要不要现在就加？
 
 注意这段回应里最值钱的，是最后那段“我不确定、需要你判断的点”。**Agent 主动划出自己的边界，把超出它判断范围的事交还给你**——这正是 VibeKaggle 想要的协作姿态。
 
@@ -845,14 +845,14 @@ sequenceDiagram
 **任务 2：让 Agent 生成 EDA 代码并执行，你人工标注。**
 把下面这段话丢给 Agent：
 
-```
-请生成 EDA 脚本，要求：
-1. 读 train.csv，输出缺失值统计、数值列分布、类别列基数、目标分布
-2. 画目标分布图、数值列按目标分组箱线图、前 20 特征相关性热力图
-3. 检查训练/测试列名一致性、类型一致性、ID 唯一性
-4. 图存 artifacts/eda/，统计表写 artifacts/logs/eda_v001.jsonl
-5. 代码函数化、带 docstring
-```
+> **提示词**：
+>
+> 请生成 EDA 脚本，要求：
+> 1. 读 train.csv，输出缺失值统计、数值列分布、类别列基数、目标分布
+> 2. 画目标分布图、数值列按目标分组箱线图、前 20 特征相关性热力图
+> 3. 检查训练/测试列名一致性、类型一致性、ID 唯一性
+> 4. 图存 artifacts/eda/，统计表写 artifacts/logs/eda_v001.jsonl
+> 5. 代码函数化、带 docstring
 
 拿到产出后，**你逐条核对**：哪些结论是数据支持的？哪些是 Agent 编的（比如它说“特征 X 与目标强相关”，你打开箱线图一看，分布重叠得厉害，那就是过度概括）。
 
