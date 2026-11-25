@@ -1,13 +1,21 @@
-<h1 align="center">百战 Kaggle</h1>
+<h1 align="center">Vibe Kaggle</h1>
 
 <p align="center"><img src='docs/public/banner.png' /></p>
 
 > [!WARNING]
 > 🧪 Beta公测版本提示：教程主体已完成，正在优化细节，欢迎大家提Issue反馈问题或建议。
 
-*你已经抓住了石头，现在是挥舞它的时候了！——《天之炽》*
+*从 TOP 方案中提炼核心洞见，助力选手跑通整个比赛流程。*
 
-*从 400+ Writeup 中提炼核心洞见，助力选手跑通整个比赛流程。*
+## 项目特色
+
+1.  全书以 vibe 工作流贯穿始终，符合当今大模型时代的最佳实践
+2.  所有实战章节换成近两年的比赛，避免知识点或方案过时
+3.  表格和时序数据引入 AutoML（AutoGluon）减少试错成本
+4.  图像比赛引入 DINO，文本比赛引入 BERT 和大模型作为解题工具，符合最新的解决方案
+5.  基线和细节完全交给大模型，API 讲解全部放进附录，专注于方案选择/模型融合/结果验证这种有意义的部分
+6.  强调“Agent不是万能的，人要对其有所约束”，避免完全放手导致毫无意义的结果
+7.  从 TOP 方案中提炼经验教训，一开始就避免走弯路
 
 ## 项目受众
 
@@ -17,8 +25,6 @@
 https://datawhalechina.github.io/baizhan-kaggle
 
 ## 目录
-
-> 本书《VibeKaggle：用大模型打 Kaggle 的全新人机协作方式》共 23 章 + 前言 + 8 个附录。完整目录见 [docs/SUMMARY.md](docs/SUMMARY.md)。
 
 | 章节名 | 简介 | 状态 |
 | ---- | ---- | ---- |
