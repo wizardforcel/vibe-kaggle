@@ -114,45 +114,49 @@ def col_mean_auc(y_true, y_prob):
 
 我们让 Agent 从报告抽标签。把这段话丢给它：
 
-```
-请读取 train.csv 中的影像报告文本列 report，用 LLM 抽取结构化异常标签：
-1. 对 12 类异常，每类输出 0/1（存在/不存在/不确定）
-2. 输出置信度 0-1
-3. 结果写入 artifacts/weak_labels/llm_labels_v001.npy，形状 (n_train, 12)
-4. 同时记录抽取失败的样本索引到 artifacts/logs/llm_extract_fail.json
-```
+> **提示词**：
+>
+> 请读取 train.csv 中的影像报告文本列 report，用 LLM 抽取结构化异常标签：
+> 1. 对 12 类异常，每类输出 0/1（存在/不存在/不确定）
+> 2. 输出置信度 0-1
+> 3. 结果写入 artifacts/weak_labels/llm_labels_v001.npy，形状 (n_train, 12)
+> 4. 同时记录抽取失败的样本索引到 artifacts/logs/llm_extract_fail.json
 
 模型输出（节选）：
 
-```
+> **AI 输出**
+>
 > （思考过程）需要调用 LLM API 批量处理报告文本。设计 prompt 要求
 > 严格 JSON 输出：{"label_1": {"present": 0/1, "confidence": 0.0-1.0}, ...}。
 > 对"不确定"的样本标 confidence < 0.5，训练时降权。
 > 注意：LLM 可能幻觉，需人抽样复核。
 > 另外报告有九种语言，非英语的要先翻译，翻译错了标签就全错。
-
-import json
-import numpy as np
-import pandas as pd
-from pathlib import Path
-
-
-def extract_labels_with_llm(reports, labels, api_client):
-    """用 LLM 从报告抽取结构化标签。"""
-    out = np.zeros((len(reports), len(labels)), dtype=np.float32)
-    conf = np.zeros_like(out)                # 置信度矩阵，后面训练时当权重用
-    fails = []
-    for i, text in enumerate(reports):
-        prompt = f"从以下放射科报告抽取异常标签，严格JSON输出：{labels}\n报告：{text}"
-        try:
-            r = json.loads(api_client.chat(prompt))
-            for j, lb in enumerate(labels):
-                out[i, j] = r[lb]["present"]
-                conf[i, j] = r[lb]["confidence"]
-        except Exception:
-            fails.append(i)                  # 解析失败就记下来，别静默填 0
-    return out, conf, fails
-```
+>
+> ```python
+> import json
+> import numpy as np
+> import pandas as pd
+> from pathlib import Path
+> ```
+>
+>
+> ```python
+> def extract_labels_with_llm(reports, labels, api_client):
+>     """用 LLM 从报告抽取结构化标签。"""
+>     out = np.zeros((len(reports), len(labels)), dtype=np.float32)
+>     conf = np.zeros_like(out)                # 置信度矩阵，后面训练时当权重用
+>     fails = []
+>     for i, text in enumerate(reports):
+>         prompt = f"从以下放射科报告抽取异常标签，严格JSON输出：{labels}\n报告：{text}"
+>         try:
+>             r = json.loads(api_client.chat(prompt))
+>             for j, lb in enumerate(labels):
+>                 out[i, j] = r[lb]["present"]
+>                 conf[i, j] = r[lb]["confidence"]
+>         except Exception:
+>             fails.append(i)                  # 解析失败就记下来，别静默填 0
+>     return out, conf, fails
+> ```
 
 这里有个容易忽略的细节：`fails` 一定要记。如果解析失败就默默填 0，你等于往训练集里灌了一批“假阴性”，模型会学得很开心，然后在线下掉分。
 
@@ -205,41 +209,41 @@ def audit_weak_labels(llm_labels, gold_labels, sample_idx):
 
 光算 Kappa 还不够，得知道“错在哪个方向”。我们可以让 Agent 做一份更细的体检：
 
-```
-在这 58 个有专家标注的病例上，比对 LLM 标签和专家标签：
-1. 逐标签算 Cohen's Kappa
-2. 对每个标签，分别统计"LLM 说 1、专家说 0"和"LLM 说 0、专家说 1"的例数
-3. 找出 LLM 系统性偏向某一类的标签
-不要修改任何标签文件，只输出报告。
-```
+> **提示词**：
+>
+> 在这 58 个有专家标注的病例上，比对 LLM 标签和专家标签：
+> 1. 逐标签算 Cohen's Kappa
+> 2. 对每个标签，分别统计"LLM 说 1、专家说 0"和"LLM 说 0、专家说 1"的例数
+> 3. 找出 LLM 系统性偏向某一类的标签
+> 不要修改任何标签文件，只输出报告。
 
 模型会这样回应：
 
-```
+> **AI 输出**
+>
 > （思考过程）58 例太少，Kappa 的置信区间会很宽，要提醒。
 > 方向性统计比 Kappa 更能说明问题：如果全是"LLM 说 1、专家说 0"，
 > 那就是 LLM 过度诊断，不是随机噪声。
-
-已完成，报告在 artifacts/audit/label_audit.md：
-
-【Kappa 概览（58 例）】
-  标签 3（内侧半月板）  Kappa 0.71  ✅
-  标签 7（积液）        Kappa 0.38  ⚠️ 低可信
-  标签 8（滑膜炎）      Kappa 0.12  ⚠️ 低可信
-
-【方向性统计】
-  标签 7 积液：LLM 说 1 专家说 0 共 11 例；反向 2 例
-  标签 8 滑膜炎：LLM 说 0 专家说 1 共 9 例；反向 1 例
-
-【我的判断】
-  积液是 LLM 过度诊断（把"少量"也当成 1），
-  滑膜炎是 LLM 漏诊（报告没写就当成 0）。
-  这两个都不是随机错误，是系统性的，直接混进训练会带偏。
-
-【提醒】
-  58 例的 Kappa 置信区间很宽（约 ±0.2），
-  这个结论方向可信，具体数值别当定论。
-```
+>
+> 已完成，报告在 artifacts/audit/label_audit.md：
+>
+> 【Kappa 概览（58 例）】
+>   标签 3（内侧半月板）  Kappa 0.71  ✅
+>   标签 7（积液）        Kappa 0.38  ⚠️ 低可信
+>   标签 8（滑膜炎）      Kappa 0.12  ⚠️ 低可信
+>
+> 【方向性统计】
+>   标签 7 积液：LLM 说 1 专家说 0 共 11 例；反向 2 例
+>   标签 8 滑膜炎：LLM 说 0 专家说 1 共 9 例；反向 1 例
+>
+> 【我的判断】
+>   积液是 LLM 过度诊断（把"少量"也当成 1），
+>   滑膜炎是 LLM 漏诊（报告没写就当成 0）。
+>   这两个都不是随机错误，是系统性的，直接混进训练会带偏。
+>
+> 【提醒】
+>   58 例的 Kappa 置信区间很宽（约 ±0.2），
+>   这个结论方向可信，具体数值别当定论。
 
 这段话里最值得学的，是最后那条“提醒”。它没有把 0.12 说得斩钉截铁，而是告诉你 58 个样本撑不起多精确的结论。**好的 Agent 会知道自己的结论有多脆。**
 
