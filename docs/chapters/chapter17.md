@@ -159,6 +159,49 @@ def masked_loss(logits, labels, answer_token_mask):
 
 **人为啥要设计这个**？“只在答案 token 算损失”是一个经验判断——它让模型聚焦于“答对”，而不是“把推理过程写得漂亮”。这个设计来自对任务的理解决定，Agent 不会主动想到。
 
+如果 Agent 没想到，你可以把设计意图告诉它，但让它来实现细节：
+
+```
+我要做的是"评论是否违反社区规则"的二分类，用 LLM 微调。
+我想只让模型在最终输出的 Yes/No 两个 token 上算损失，
+中间的推理 token 不算损失，这样模型更专注于答对。
+请实现这个损失掩码，并说明怎么定位答案 token。
+```
+
+模型会这样回应：
+
+```
+> （思考过程）用户已有明确设计意图，我要做的是实现细节。
+> 关键点是"怎么找到答案 token 的位置"：因为模型输出序列
+> 里只有最后一个非 padding 位置是答案，所以我用 attention_mask
+> 找出每行最后一个有效 token，再检查该位置的 token id
+> 是否属于 Yes/No 词表。
+
+def build_answer_mask(input_ids, attention_mask, yes_id, no_id):
+    """
+    构造答案位置掩码：只标记每行最后一个有效 token，
+    且该 token 属于 Yes/No 词表时才标记为 1。
+    """
+    seq_len = input_ids.size(1)
+    # 每行最后一个有效位置（attention_mask 从右往左第一个 1）
+    last_idx = attention_mask.size(1) - 1 - attention_mask.flip(1).argmax(1)
+    mask = torch.zeros_like(input_ids, dtype=torch.bool)
+    rows = torch.arange(input_ids.size(0))
+    tok = input_ids[rows, last_idx]
+    mask[rows, last_idx] = (tok == yes_id) | (tok == no_id)
+    return mask
+
+【设计要点说明】
+1. 为什么用"最后一个有效 token"而不是搜 Yes/No：
+   推理文本里也可能出现 "yes"（比如"yes, it is rude"），
+   全文搜索会标错位置。
+2. 如果末尾 token 不是 Yes/No（比如模型输出的是"Sure."），
+   该行掩码全 0，这行就不参与损失。我会打印这类样本比例，
+   太高说明提示词或解码策略要调。
+```
+
+它不仅实现了，还**解释了关键设计取舍**（为什么不用全文搜索、异常情况怎么处理）。这种“解释为什么”比“解释怎么做”更有价值——因为后者你能自己看代码，前者才是它真正的思考。
+
 ---
 
 ## 17.5 集成与提交
