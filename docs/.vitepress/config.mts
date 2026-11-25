@@ -9,8 +9,8 @@ const baseConfig = isEdgeOne ? '/' : '/repo-template/'
 
 export default defineConfig({
   lang: 'zh-CN',
-  title: "Datawhale开源教程",
-  description: "AI前沿知识开源教程",
+  title: "VibeKaggle",
+  description: "用大模型打 Kaggle 的全新人机协作方式",
   base: baseConfig,
   markdown: {
     math: true
@@ -42,16 +42,82 @@ export default defineConfig({
     },
     sidebar: [
       {
+        text: '前言：VibeKaggle 不是用 AI 写代码',
+        link: '/chapters/preface.html',
+      },
+      {
+        text: '第1部分：入门与基础',
+        collapsible: true,
         items: [
-          { text: '第1章：第1章的标题', link: '/chapter1/' },
-          { text: '第2章：第2章的标题', 
-            items: [
-              { text: '第2.1节：第2.1节的标题', link: '/chapter2/chapter2_1' },
-              { text: '第2.2节：第2.2节的标题', link: '/chapter2/chapter2_2' }
-            ]
-           }
-        ]
-      }
+          { text: '第1章：VibeKaggle 的工作流全景', link: '/chapters/chapter01.html' },
+          { text: '第2章：VibeKaggle 的操作系统', link: '/chapters/chapter02.html' },
+        ],
+      },
+      {
+        text: '第2部分：表格数据：VibeKaggle 的主场',
+        collapsible: true,
+        items: [
+          { text: '第3章：表格数据的 Vibe 工作流', link: '/chapters/chapter03.html' },
+          { text: '第4章：S6E3 客户流失预测（NVIDIA 夺冠）', link: '/chapters/chapter04.html' },
+          { text: '第5章：S5E10 道路事故风险预测', link: '/chapters/chapter05.html' },
+          { text: '第6章：S6E1 学生考试成绩预测', link: '/chapters/chapter06.html' },
+          { text: '第7章：NeurIPS Open Polymer Prediction 2025', link: '/chapters/chapter07.html' },
+        ],
+      },
+      {
+        text: '第3部分：时序数据',
+        collapsible: true,
+        items: [
+          { text: '第8章：时序数据的 Vibe 工作流', link: '/chapters/chapter08.html' },
+          { text: '第9章：S5E1 贴纸销售预测', link: '/chapters/chapter09.html' },
+          { text: '第10章：S5E10 道路事故风险预测', link: '/chapters/chapter10.html' },
+          { text: '第11章：Jane Street 实时市场数据预测', link: '/chapters/chapter11.html' },
+        ],
+      },
+      {
+        text: '第4部分：图像数据',
+        collapsible: true,
+        items: [
+          { text: '第12章：图像数据的 Vibe 工作流', link: '/chapters/chapter12.html' },
+          { text: '第13章：CSIRO Image2Biomass 预测', link: '/chapters/chapter13.html' },
+          { text: '第14章：RSNA Knee 异常检测', link: '/chapters/chapter14.html' },
+          { text: '第15章：Image Matching Challenge 2025', link: '/chapters/chapter15.html' },
+        ],
+      },
+      {
+        text: '第5部分：文本数据',
+        collapsible: true,
+        items: [
+          { text: '第16章：文本数据的 Vibe 工作流', link: '/chapters/chapter16.html' },
+          { text: '第17章：Jigsaw 社区规则分类', link: '/chapters/chapter17.html' },
+          { text: '第18章：LLM Prompt Recovery', link: '/chapters/chapter18.html' },
+          { text: '第19章：Make Data Count', link: '/chapters/chapter19.html' },
+        ],
+      },
+      {
+        text: '第6部分：进阶与迁移',
+        collapsible: true,
+        items: [
+          { text: '第20章：验证与评估', link: '/chapters/chapter20.html' },
+          { text: '第21章：调优与集成', link: '/chapters/chapter21.html' },
+          { text: '第22章：策略与心态', link: '/chapters/chapter22.html' },
+          { text: '第23章：从 VibeKaggle 到实际项目', link: '/chapters/chapter23.html' },
+        ],
+      },
+      {
+        text: '附录',
+        collapsible: true,
+        items: [
+          { text: '附录A：NumPy / pandas / matplotlib', link: '/appendices/appendix_a.html' },
+          { text: '附录B：scikit-learn / XGBoost / LightGBM', link: '/appendices/appendix_b.html' },
+          { text: '附录C：AutoGluon', link: '/appendices/appendix_c.html' },
+          { text: '附录D：PyTorch / Transformers', link: '/appendices/appendix_d.html' },
+          { text: '附录E：表格基础模型', link: '/appendices/appendix_e.html' },
+          { text: '附录F：Kaggle MCP 配置', link: '/appendices/appendix_f.html' },
+          { text: '附录G：评估指标速查', link: '/appendices/appendix_g.html' },
+          { text: '附录H：工件管理与实验日志', link: '/appendices/appendix_h.html' },
+        ],
+      },
     ],
 
     socialLinks: [
