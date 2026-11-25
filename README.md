@@ -18,37 +18,42 @@ https://datawhalechina.github.io/baizhan-kaggle
 
 ## 目录
 
+> 本书《VibeKaggle：用大模型打 Kaggle 的全新人机协作方式》共 23 章 + 前言 + 8 个附录。完整目录见 [docs/SUMMARY.md](docs/SUMMARY.md)。
+
 | 章节名 | 简介 | 状态 |
 | ---- | ---- | ---- |
-| [第1章 Kaggle 比赛流程与规则](docs/ch01/index.md) | 从注册到首次提交的完整走一遍，含 Kaggle CLI 与 MCP 配置 | 已完成 |
-| [第2章 探索性数据分析（EDA）](docs/ch02/index.md) | 先把数据摊开看，分布、缺失值、异常值与相关性 | 已完成 |
-| [第3章 表格数据的通用清洗与建模方法](docs/ch03/index.md) | 缺失值、类别编码、特征构造、数值变换、基线与主力模型 | 已完成 |
-| [第4章 表格数据比赛详解：房价预测（House Prices）](docs/ch04/index.md) | Ames 房价回归，表格比赛解题全流程示例 | 已完成 |
-| [第5章 表格数据比赛详解：信用评分（Give Me Some Credit）](docs/ch05/index.md) | 二分类，类别不平衡，LogLoss 指标 | 已完成 |
-| [第6章 表格数据比赛详解：贷款审批（Loan Approval）](docs/ch06/index.md) | 贷款是否批准，分类准确率与 F1 分数 | 已完成 |
-| [第7章 表格数据比赛详解：推土机拍卖价格预测（Blue Book for Bulldozers）](docs/ch07/index.md) | 回归，时间切分验证，RMSPE 指标 | 已完成 |
-| [第8章 时序数据的通用清洗与建模方法](docs/ch08/index.md) | 日期拆分、滞后特征、滚动统计、时间切分验证 | 已完成 |
-| [第9章 时序数据比赛详解：门店销售预测（Rossmann Store Sales）](docs/ch09/index.md) | 日销售额预测，RMSPE，按时间切分验证集 | 已完成 |
-| [第10章 时序数据比赛详解：交通流量预测（TrafficFlowBench）](docs/ch10/index.md) | 多任务时序，早晚高峰与节假日效应 | 已完成 |
-| [第11章 时序数据比赛详解：电力负荷预测](docs/ch11/index.md) | 气象与负载，逐小时电力负载预测 | 已完成 |
-| [第12章 图像数据的通用清洗与建模方法](docs/ch12/index.md) | 像素、缩放归一化、CNN、数据增强、迁移学习 | 已完成 |
-| [第13章 图像数据比赛详解：猫狗大战（Dogs vs. Cats）](docs/ch13/index.md) | 二分类图像，从零训练 CNN 到 VGG16 迁移学习 | 已完成 |
-| [第14章 图像数据比赛详解：糖尿病视网膜病变检测（Diabetic Retinopathy）](docs/ch14/index.md) | 图像多分类，QWK 指标 | 已完成 |
-| [第15章 图像数据比赛详解：卫星图像分类（Planet / Carvana）](docs/ch15/index.md) | 多标签分类，F2 指标，U-Net 分割 | 已完成 |
-| [第16章 文本数据的通用清洗与建模方法](docs/ch16/index.md) | 文本清洗、词袋模型、TF-IDF、浅层文本模型 | 已完成 |
-| [第17章 文本数据比赛详解：Quora 问题对去重](docs/ch17/index.md) | 问题相似度，TF-IDF 与共同邻居特征 + XGBoost | 已完成 |
-| [第18章 文本数据比赛详解：电影评论情感分析（IMDb）](docs/ch18/index.md) | 文本多分类，分类准确率 | 已完成 |
-| [第19章 文本数据比赛详解：文本分类与关键词抽取（Tradeshift / Facebook Recruiting III）](docs/ch19/index.md) | 多标签文本分类，噪声文本与稀有特征 | 已完成 |
-| [第20章 模型评估与验证：先看得分准不准](docs/ch20/index.md) | 指标选型、交叉验证、目标泄漏、本地分与排行榜分差距 | 已完成 |
-| [第21章 模型调优与集成学习：榜单上的最后几名](docs/ch21/index.md) | 超参数搜索、投票、Stacking、早停 | 已完成 |
-| [第22章 比赛策略与心态](docs/ch22/index.md) | 选比赛、先跑基线、防过拟合、提交策略、团队合作 | 已完成 |
-| [第23章 从 Kaggle 到实际机器学习项目](docs/ch23/index.md) | 竞赛到业务的迁移、模块化代码、模型部署 | 已完成 |
-| [附录A NumPy 快速参考](docs/AppendixA/index.md) | 数组创建、索引、统计、矩阵运算 | 已完成 |
-| [附录B pandas 快速参考](docs/AppendixB/index.md) | Series/DataFrame、读写、筛选、分组、合并 | 已完成 |
-| [附录C matplotlib 快速参考](docs/AppendixC/index.md) | 常见图表、坐标轴、样式、保存 | 已完成 |
-| [附录D scikit-learn 快速参考](docs/AppendixD/index.md) | 预处理、模型、交叉验证、管道、评估 | 已完成 |
-| [附录E PyTorch 快速参考](docs/AppendixE/index.md) | Tensor、nn.Module、损失、优化器、训练循环 | 已完成 |
-| [附录F 常用 Kaggle 评估指标速查表](docs/AppendixF/index.md) | 回归/分类指标公式与适用场景 | 已完成 |
+| [前言：VibeKaggle 不是用 AI 写代码](docs/chapters/preface.md) | 为什么这本书教的是"设计并运行一条人机协作的竞赛工作流" | 已完成 |
+| [第1章 VibeKaggle 的工作流全景](docs/chapters/chapter01.md) | Kaggle 页面导览、选比赛、三份核心文件与提交格式、搭好"工地"跑通常数基线 | 已完成 |
+| [第2章 VibeKaggle 的操作系统](docs/chapters/chapter02.md) | 工件规范、验证优先、Agent 能力边界、带护栏的 MCP 流水线 | 已完成 |
+| [第3章 表格数据的 Vibe 工作流](docs/chapters/chapter03.md) | 从自动基线到人机迭代的五步循环模板 | 已完成 |
+| [第4章 表格比赛详解：Playground S6E3 客户流失预测](docs/chapters/chapter04.md) | 2026，NVIDIA LLM Agent 夺冠（850 实验 → 150 模型四级堆叠）的门控规则 | 已完成 |
+| [第5章 表格比赛详解：Playground S5E10 道路事故风险预测](docs/chapters/chapter05.md) | 2025，AutoGluon 作为起点，Agent 扩候选池、人做减法 | 已完成 |
+| [第6章 表格比赛详解：Playground S6E1 学生考试成绩预测](docs/chapters/chapter06.md) | 2025—2026，特征工程的深度挖掘 | 已完成 |
+| [第7章 表格比赛详解：NeurIPS Open Polymer Prediction 2025](docs/chapters/chapter07.md) | 科学表格数据的验证特殊性：分数好 ≠ 结果对，领域合理性守门 | 已完成 |
+| [第8章 时序数据的 Vibe 工作流](docs/chapters/chapter08.md) | 自动化枚举与人工时间纪律：为什么随机切分是头号大敌 | 已完成 |
+| [第9章 时序比赛详解：Playground S5E1 贴纸销售预测](docs/chapters/chapter09.md) | 2025，时间纪律的入门标准，Group K-Fold 与"戳破自我欺骗" | 已完成 |
+| [第10章 时序比赛详解：Playground S5E10 道路事故风险预测](docs/chapters/chapter10.md) | 2025，Agent 枚举与人做互补性选择，残差建模与 NNLS | 已完成 |
+| [第11章 时序比赛详解：Jane Street Real-Time Market Data Forecasting](docs/chapters/chapter11.md) | 2024—2025，非平稳时序的验证极限，在线学习 | 已完成 |
+| [第12章 图像数据的 Vibe 工作流](docs/chapters/chapter12.md) | 基础模型时代的人机分工：冻结骨干 + 轻量头 | 已完成 |
+| [第13章 图像比赛详解：CSIRO Image2Biomass Prediction](docs/chapters/chapter13.md) | 2025—2026，DINOv3 多模态融合与人工数据清洗 | 已完成 |
+| [第14章 图像比赛详解：RSNA Knee Abnormality Detection](docs/chapters/chapter14.md) | 2026，医学影像 + LLM Agent 监督，98.7% 数据无标准答案 | 已完成 |
+| [第15章 图像比赛详解：Image Matching Challenge 2025](docs/chapters/chapter15.md) | 2025，几何视觉中的 Agent 实验管理 | 已完成 |
+| [第16章 文本数据的 Vibe 工作流](docs/chapters/chapter16.md) | LLM 原生赛道的双重角色：既是选手又是裁判 | 已完成 |
+| [第17章 文本比赛详解：Jigsaw — Agile Community Rules Classification](docs/chapters/chapter17.md) | 2025，LLM 微调与验证策略的判断（信 CV 还是信 LB） | 已完成 |
+| [第18章 文本比赛详解：LLM Prompt Recovery](docs/chapters/chapter18.md) | 2024，生成式任务中的混合策略判断 | 已完成 |
+| [第19章 文本比赛详解：Make Data Count — Finding Data References](docs/chapters/chapter19.md) | 2025，检索 + 分类的混合流程与阶段误差传播 | 已完成 |
+| [第20章 验证与评估：Vibe 时代更不可让渡的判断](docs/chapters/chapter20.md) | 验证污染、目标泄漏、公私榜差异、提交预算纪律 | 已完成 |
+| [第21章 调优与集成：Agent 搜索，人选择](docs/chapters/chapter21.md) | 超参搜索、Stacking、NNLS、多样性选择 | 已完成 |
+| [第22章 VibeKaggle 的策略与心态](docs/chapters/chapter22.md) | 选比赛、提交预算、人类队友 + Agent 队友、从运动员到教练 | 已完成 |
+| [第23章 从 VibeKaggle 到实际项目](docs/chapters/chapter23.md) | 竞赛经验迁移生产、可维护项目结构、模型部署 | 已完成 |
+| [附录A NumPy / pandas / matplotlib 快速参考](docs/appendices/appendix_a.md) | 数组、DataFrame、常见图表（精简合并版） | 已完成 |
+| [附录B scikit-learn / XGBoost / LightGBM 速查](docs/appendices/appendix_b.md) | 预处理、模型、交叉验证、评估 | 已完成 |
+| [附录C AutoGluon 快速参考](docs/appendices/appendix_c.md) | Tabular / TimeSeries 用法 | 已完成 |
+| [附录D PyTorch / HuggingFace Transformers 速查](docs/appendices/appendix_d.md) | Tensor、nn.Module、训练循环、Transformers | 已完成 |
+| [附录E 表格基础模型速查](docs/appendices/appendix_e.md) | TabPFN 等表格基础模型 | 已完成 |
+| [附录F Kaggle MCP 配置与安全实践](docs/appendices/appendix_f.md) | MCP 接入、护栏与审计 | 已完成 |
+| [附录G Kaggle 评估指标速查](docs/appendices/appendix_g.md) | 回归/分类指标公式与适用场景 | 已完成 |
+| [附录H 工件管理与实验日志规范](docs/appendices/appendix_h.md) | 完整版工件元数据与日志规范 | 已完成 |
 
 ## 贡献者名单
 
