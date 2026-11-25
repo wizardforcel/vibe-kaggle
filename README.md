@@ -29,29 +29,29 @@ https://datawhalechina.github.io/baizhan-kaggle
 | 章节名 | 简介 | 状态 |
 | ---- | ---- | ---- |
 | [前言：VibeKaggle 不是用 AI 写代码](docs/chapters/preface.md) | 为什么这本书教的是"设计并运行一条人机协作的竞赛工作流" | 已完成 |
-| [第1章 VibeKaggle 的工作流全景](docs/chapters/chapter01.md) | Kaggle 页面导览、选比赛、三份核心文件与提交格式、搭好"工地"跑通常数基线 | 已完成 |
-| [第2章 VibeKaggle 的操作系统](docs/chapters/chapter02.md) | 工件规范、验证优先、Agent 能力边界、带护栏的 MCP 流水线 | 已完成 |
-| [第3章 表格数据的 Vibe 工作流](docs/chapters/chapter03.md) | 从自动基线到人机迭代的五步循环模板 | 已完成 |
-| [第4章 表格比赛详解：Playground S6E3 客户流失预测](docs/chapters/chapter04.md) | 2026，NVIDIA LLM Agent 夺冠（850 实验 → 150 模型四级堆叠）的门控规则 | 已完成 |
-| [第5章 表格比赛详解：Playground S5E10 道路事故风险预测](docs/chapters/chapter05.md) | 2025，AutoGluon 作为起点，Agent 扩候选池、人做减法 | 已完成 |
-| [第6章 表格比赛详解：Playground S6E1 学生考试成绩预测](docs/chapters/chapter06.md) | 2025—2026，特征工程的深度挖掘 | 已完成 |
-| [第7章 表格比赛详解：NeurIPS Open Polymer Prediction 2025](docs/chapters/chapter07.md) | 科学表格数据的验证特殊性：分数好 ≠ 结果对，领域合理性守门 | 已完成 |
-| [第8章 时序数据的 Vibe 工作流](docs/chapters/chapter08.md) | 自动化枚举与人工时间纪律：为什么随机切分是头号大敌 | 已完成 |
-| [第9章 时序比赛详解：Playground S5E1 贴纸销售预测](docs/chapters/chapter09.md) | 2025，时间纪律的入门标准，Group K-Fold 与"戳破自我欺骗" | 已完成 |
-| [第10章 时序比赛详解：Playground S5E10 道路事故风险预测](docs/chapters/chapter10.md) | 2025，Agent 枚举与人做互补性选择，残差建模与 NNLS | 已完成 |
-| [第11章 时序比赛详解：Jane Street Real-Time Market Data Forecasting](docs/chapters/chapter11.md) | 2024—2025，非平稳时序的验证极限，在线学习 | 已完成 |
-| [第12章 图像数据的 Vibe 工作流](docs/chapters/chapter12.md) | 基础模型时代的人机分工：冻结骨干 + 轻量头 | 已完成 |
-| [第13章 图像比赛详解：CSIRO Image2Biomass Prediction](docs/chapters/chapter13.md) | 2025—2026，DINOv3 多模态融合与人工数据清洗 | 已完成 |
-| [第14章 图像比赛详解：RSNA Knee Abnormality Detection](docs/chapters/chapter14.md) | 2026，医学影像 + LLM Agent 监督，98.7% 数据无标准答案 | 已完成 |
-| [第15章 图像比赛详解：Image Matching Challenge 2025](docs/chapters/chapter15.md) | 2025，几何视觉中的 Agent 实验管理 | 已完成 |
-| [第16章 文本数据的 Vibe 工作流](docs/chapters/chapter16.md) | LLM 原生赛道的双重角色：既是选手又是裁判 | 已完成 |
-| [第17章 文本比赛详解：Jigsaw — Agile Community Rules Classification](docs/chapters/chapter17.md) | 2025，LLM 微调与验证策略的判断（信 CV 还是信 LB） | 已完成 |
-| [第18章 文本比赛详解：LLM Prompt Recovery](docs/chapters/chapter18.md) | 2024，生成式任务中的混合策略判断 | 已完成 |
-| [第19章 文本比赛详解：Make Data Count — Finding Data References](docs/chapters/chapter19.md) | 2025，检索 + 分类的混合流程与阶段误差传播 | 已完成 |
-| [第20章 验证与评估：Vibe 时代更不可让渡的判断](docs/chapters/chapter20.md) | 验证污染、目标泄漏、公私榜差异、提交预算纪律 | 已完成 |
-| [第21章 调优与集成：Agent 搜索，人选择](docs/chapters/chapter21.md) | 超参搜索、Stacking、NNLS、多样性选择 | 已完成 |
-| [第22章 VibeKaggle 的策略与心态](docs/chapters/chapter22.md) | 选比赛、提交预算、人类队友 + Agent 队友、从运动员到教练 | 已完成 |
-| [第23章 从 VibeKaggle 到实际项目](docs/chapters/chapter23.md) | 竞赛经验迁移生产、可维护项目结构、模型部署 | 已完成 |
+| [第1章 VibeKaggle 的工作流全景](docs/chapter01/index.md) | Kaggle 页面导览、选比赛、三份核心文件与提交格式、搭好"工地"跑通常数基线 | 已完成 |
+| [第2章 VibeKaggle 的操作系统](docs/chapter02/index.md) | 工件规范、验证优先、Agent 能力边界、带护栏的 MCP 流水线 | 已完成 |
+| [第3章 表格数据的 Vibe 工作流](docs/chapter03/index.md) | 从自动基线到人机迭代的五步循环模板 | 已完成 |
+| [第4章 表格比赛详解：Playground S6E3 客户流失预测](docs/chapter04/index.md) | 2026，NVIDIA LLM Agent 夺冠（850 实验 → 150 模型四级堆叠）的门控规则 | 已完成 |
+| [第5章 表格比赛详解：Playground S5E10 道路事故风险预测](docs/chapter05/index.md) | 2025，AutoGluon 作为起点，Agent 扩候选池、人做减法 | 已完成 |
+| [第6章 表格比赛详解：Playground S6E1 学生考试成绩预测](docs/chapter06/index.md) | 2025—2026，特征工程的深度挖掘 | 已完成 |
+| [第7章 表格比赛详解：NeurIPS Open Polymer Prediction 2025](docs/chapter07/index.md) | 科学表格数据的验证特殊性：分数好 ≠ 结果对，领域合理性守门 | 已完成 |
+| [第8章 时序数据的 Vibe 工作流](docs/chapter08/index.md) | 自动化枚举与人工时间纪律：为什么随机切分是头号大敌 | 已完成 |
+| [第9章 时序比赛详解：Playground S5E1 贴纸销售预测](docs/chapter09/index.md) | 2025，时间纪律的入门标准，Group K-Fold 与"戳破自我欺骗" | 已完成 |
+| [第10章 时序比赛详解：Playground S5E10 道路事故风险预测](docs/chapter10/index.md) | 2025，Agent 枚举与人做互补性选择，残差建模与 NNLS | 已完成 |
+| [第11章 时序比赛详解：Jane Street Real-Time Market Data Forecasting](docs/chapter11/index.md) | 2024—2025，非平稳时序的验证极限，在线学习 | 已完成 |
+| [第12章 图像数据的 Vibe 工作流](docs/chapter12/index.md) | 基础模型时代的人机分工：冻结骨干 + 轻量头 | 已完成 |
+| [第13章 图像比赛详解：CSIRO Image2Biomass Prediction](docs/chapter13/index.md) | 2025—2026，DINOv3 多模态融合与人工数据清洗 | 已完成 |
+| [第14章 图像比赛详解：RSNA Knee Abnormality Detection](docs/chapter14/index.md) | 2026，医学影像 + LLM Agent 监督，98.7% 数据无标准答案 | 已完成 |
+| [第15章 图像比赛详解：Image Matching Challenge 2025](docs/chapter15/index.md) | 2025，几何视觉中的 Agent 实验管理 | 已完成 |
+| [第16章 文本数据的 Vibe 工作流](docs/chapter16/index.md) | LLM 原生赛道的双重角色：既是选手又是裁判 | 已完成 |
+| [第17章 文本比赛详解：Jigsaw — Agile Community Rules Classification](docs/chapter17/index.md) | 2025，LLM 微调与验证策略的判断（信 CV 还是信 LB） | 已完成 |
+| [第18章 文本比赛详解：LLM Prompt Recovery](docs/chapter18/index.md) | 2024，生成式任务中的混合策略判断 | 已完成 |
+| [第19章 文本比赛详解：Make Data Count — Finding Data References](docs/chapter19/index.md) | 2025，检索 + 分类的混合流程与阶段误差传播 | 已完成 |
+| [第20章 验证与评估：Vibe 时代更不可让渡的判断](docs/chapter20/index.md) | 验证污染、目标泄漏、公私榜差异、提交预算纪律 | 已完成 |
+| [第21章 调优与集成：Agent 搜索，人选择](docs/chapter21/index.md) | 超参搜索、Stacking、NNLS、多样性选择 | 已完成 |
+| [第22章 VibeKaggle 的策略与心态](docs/chapter22/index.md) | 选比赛、提交预算、人类队友 + Agent 队友、从运动员到教练 | 已完成 |
+| [第23章 从 VibeKaggle 到实际项目](docs/chapter23/index.md) | 竞赛经验迁移生产、可维护项目结构、模型部署 | 已完成 |
 | [附录A NumPy / pandas / matplotlib 快速参考](docs/appendices/appendix_a.md) | 数组、DataFrame、常见图表（精简合并版） | 已完成 |
 | [附录B scikit-learn / XGBoost / LightGBM 速查](docs/appendices/appendix_b.md) | 预处理、模型、交叉验证、评估 | 已完成 |
 | [附录C AutoGluon 快速参考](docs/appendices/appendix_c.md) | Tabular / TimeSeries 用法 | 已完成 |
