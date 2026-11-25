@@ -1,51 +1,140 @@
 # 附录E：表格基础模型速查（TabPFN 等）
 
-> 表格基础模型（Tabular Foundation Model, TFM）是近两年兴起的新范式：像大语言模型一样，在海量表格上预训练，推理时无需训练/微调即可预测。中小规模数据上表现极强。
+> 本附录只回答一个问题：**什么时候该用 TabPFN 这类"表格基础模型"，什么时候不该用。** 它是全书"零调参基线"的另一来源，和 AutoGluon（附录C）并列，构成表格章的两条快速基线。
+
+先给一句直觉：传统机器学习是"拿到题才开始学"，TabPFN 是"作业题都做过一遍了，现在只是把新题塞进去"。它不需要训练、不需要调参，几秒钟就能出预测。
 
 ---
 
-## E.1 TabPFN
+## E.1 TabPFN 是什么、什么时候用
+
+TabPFN 全称 **Prior-Data Fitted Network**（先验数据拟合网络）。它在海量"人造表格任务"上预训练过，见到新表格时直接做一次前向推理就给出预测——不用梯度下降，不用调学习率。
+
+它最擅长的场景很明确：
+
+- **中小规模表格**：几千到几万行、几十到几百列；
+- **分类和回归都行**；
+- **想快速拿到一个"不费力基线"**，看看数据本身有多少信号；
+- **需要一个和树模型"犯错方式不同"的模型**，做集成的多样性来源。
+
+它不擅长的场景也很明确：数据量太大（几十万行以上）时，它要么内存爆、要么效果不如树模型；类别特征特别多时，树模型（尤其 CatBoost）通常更强。
+
+一个值得记住的真实参照：TabPFN 的原始论文（2025 年发表在 Nature）就强调它面向"小数据"场景，作者甚至用一张 5 年前的消费级显卡（RTX 2080 Ti）就能跑——这从侧面说明它的定位是"小数据 + 低算力也能用"。
+
+**什么时候会用到**：每章表格赛的"第二个基线"（AutoGluon 之外），用来判断"这条数据上不费力能做到多好"，以及给后续集成提供多样性。
+
+---
+
+## E.2 TabPFN 最小可用示例
 
 ```python
+import numpy as np
+import pandas as pd
 from tabpfn import TabPFNClassifier, TabPFNRegressor
 
-# 分类
-clf = TabPFNClassifier(device="cuda")
-clf.fit(X_train, y_train)             # 注意：它内部不训练，只是"记住"数据
-p = clf.predict_proba(X_test)[:, 1]
+train = pd.read_csv("data/train.csv")
+test = pd.read_csv("data/test.csv")
 
-# 回归
-reg = TabPFNRegressor(device="cuda")
-reg.fit(X_train, y_train)
-pred = reg.predict(X_test)
+# 分类任务
+clf = TabPFNClassifier()                       # 零配置，默认参数就够用
+clf.fit(train[feature_cols], train["target"])  # 训练（实际是"拟合先验"）
+oof_proba = clf.predict_proba(train[feature_cols])[:, 1]
+test_proba = clf.predict_proba(test[feature_cols])[:, 1]
+
+# 回归任务
+reg = TabPFNRegressor()
+reg.fit(train[feature_cols], train["target"])
+test_pred = reg.predict(test[feature_cols])
+
+# 按合规工件规范落盘
+np.save("artifacts/oof/train_oof_TABPFN_v001.npy", oof_proba)
+np.save("artifacts/test_preds/test_preds_TABPFN_v001.npy", test_proba)
 ```
 
-**适用场景**：
-- 样本数 < 1 万、特征 < 500（超出会慢/效果下降）；
-- 想要“零调参”的强基线；
-- 作为集成多样性来源（和树模型互补）。
+注意：这里的 `oof_proba` 是"用全量训练集训的模型对训练集的预测"，严格来说不是 OOF。要产出合规 OOF，仍要按附录C的 C.3 按人固定折另算。TabPFN 的好处是"快"，所以按 5 折各跑一次成本也很低。
 
-**注意**：TabPFN 对数据规模敏感，大数据上不如 GBDT；它也不是“万能”，中小表格才是主场。
+**什么时候会用到**：拿到新数据的第一时间，先跑一个 TabPFN 看看"天花板大概在哪"。
 
 ---
 
-## E.2 其他表格基础模型
+## E.3 与树模型的互补性
 
-| 模型 | 特点 | 来源 |
-|------|------|------|
-| TabPFN | 零样本/少样本，中小数据极强 | Prior Labs |
-| TabICL | 上下文学习，大数据可用 | 2025 |
-| Mitra | 混合合成先验增强 | 2025 |
-| Nori / TabDPT-Turbo | AutoGluon `extreme` 预设内置 | TabArena |
+TabPFN 和树模型（XGBoost / LightGBM / CatBoost）的误差模式不同：树模型擅长"特征交互 + 类别特征"，TabPFN 擅长"小数据上的整体分布拟合"。把两者的 OOF 一平均，常常比单用任何一个都强。
 
-这些模型大多可以通过 AutoGluon 的 `presets="extreme"` 或 `noncommercial` 自动调用，无需单独写代码。
+判断"值不值得集成"的标准，是 **OOF 相关性**：
+
+```python
+import numpy as np
+
+corr = np.corrcoef(oof_autogluon, oof_tabpfn)[0, 1]
+print(f"OOF 相关性: {corr:.3f}")
+# < 0.95：有多样性，值得集成
+# > 0.98：几乎一样，集成没意义
+```
+
+一个常被引用的真实案例：在 2015 年 Otto 集团商品分类比赛上，TabPFN-3.5 用默认配置拿到 Private 榜 0.375 的多分类对数损失，而那场比赛的冠军是两位 Kaggle Grandmaster 手工叠加 36 个模型拿到的 0.382——一个"不调参"的模型跑赢了 36 模型的手工堆叠。当然，这个案例也提醒你它的边界：**它赢在小数据 + 默认配置，不是万能的**。
+
+**什么时候会用到**：做集成前判断"TabPFN 的 OOF 值不值得进候选池"。
 
 ---
 
-## E.3 在 VibeKaggle 中的定位
+## E.4 其他表格基础模型与适用规模
 
-- **第一个合规工件的快速来源**：TabPFN 零调参，几秒出结果；
-- **多样性来源**：和 AutoGluon 的树模型集成，往往涨分；
-- **不替代 GBDT**：大数据、高基数类别，GBDT 仍是主力。
+除了 TabPFN，表格基础模型还有一些其他选择，适用规模各不相同：
 
-下一附录是 Kaggle MCP 配置与安全实践。
+| 模型类型 | 适用规模 | 特点 |
+|----------|---------|------|
+| TabPFN | 几千 ~ 几万行 | 零调参、小数据强、推理快 |
+| 其他表格基础模型 | 类似量级 | 各有侧重，按官方文档确认 |
+| 树模型（AutoGluon/XGB/LGBM） | 几万 ~ 百万行 | 大数据更稳、类别特征更强 |
+
+超出 TabPFN 适用规模时的降级策略：**采样 + 树模型兜底**——先随机采样到几万行跑 TabPFN 拿个参考分，再用全量数据跑树模型做主力。
+
+**什么时候会用到**：数据量超出 TabPFN 舒适区时，决定"要不要降级到树模型"。
+
+---
+
+## E.5 使用前提：规则是否允许预训练模型
+
+TabPFN 属于"预训练基础模型"。有些比赛明确限制使用预训练模型或外部数据，用之前必须先读 `Rules` 页。如果不允许，就老老实实用 AutoGluon / 树模型。
+
+另外，把模型名和版本写进配置文件，不要硬编码在代码里——换机器、换环境时，版本对不上会直接报错。
+
+**什么时候会用到**：选模型之前，先确认规则允许；配置里记录 `tabpfn==<版本>`。
+
+跑大模型最容易撞上的就是内存，可以这样问：
+
+```
+我用 TabPFN 跑 5 万行数据，报内存不足了。我该降数据量还是换模型？
+给我判断依据，不要直接改代码。
+```
+
+模型会这样答：
+
+```
+> （思考过程）用户要判断依据。核心是"TabPFN 的舒适区"这个概念。
+> 给一个简单的分界：先降数据量试，降不动再换模型。再补一句
+> "降级不丢人"。
+
+判断依据一句话：**先看你的数据量离 TabPFN 的舒适区有多远。**
+
+- 几万行以内：优先降数据量（采样到 2~3 万行）再跑，通常能过；
+- 已经十几万行：别硬撑，直接换 AutoGluon / 树模型，TabPFN 在这个
+  量级本来就不占优；
+- 采样后分数掉得厉害：说明数据量大有大的道理，老老实实用树模型。
+
+降级不丢人——**用对工具比用强工具重要**。
+```
+
+---
+
+## 小结
+
+TabPFN 是全书表格章的"第二个基线"：
+
+- 定位是"小数据 + 零调参"，和 AutoGluon 并列；
+- 用法极简：`fit` + `predict_proba`，几秒钟出结果；
+- 和树模型误差模式不同，是集成的多样性来源，用 OOF 相关性（< 0.95）判断是否值得集成；
+- 超出适用规模时降级到树模型；用之前先确认规则允许预训练模型。
+
+下一个附录是 Kaggle MCP 配置与安全实践——让 Agent 能持续操作平台，同时把"不可逆"关进笼子。
