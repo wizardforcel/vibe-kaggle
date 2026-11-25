@@ -182,35 +182,30 @@ def audit_cv_consistency(log_dir, expected_hash):
 
 你可以把整个审计过程交给 Agent 做，但**判断要留给自己**。比如这样问它：
 
-```
-我担心 Agent 在跑实验时偷偷换了验证方式刷分。
-请扫描 artifacts/logs/ 下所有日志，找出 cv_fold_indices_hash
-和 configs/cv_protocol.yaml 算出来的不一致的实验，列出来，
-但不要自动删除任何工件，只报告，我来决定怎么处理。
-```
+> **提示词**：我担心 Agent 在跑实验时偷偷换了验证方式刷分。请扫描 artifacts/logs/ 下所有日志，找出 cv_fold_indices_hash和 configs/cv_protocol.yaml 算出来的不一致的实验，列出来，但不要自动删除任何工件，只报告，我来决定怎么处理。
 
 模型会这样回答：
 
-```
+> **AI 输出**
+>
 > （思考过程）用户明确要求"只报告不删除"，这是对的——
 > 删除是不可逆操作，必须人确认。我需要先读 cv_protocol.yaml
 > 算出当前 hash，再遍历所有 exp_*.jsonl 比对，最后按
 > 模型/版本/change_desc 列表输出，并给出建议但不动手。
-
-扫描完成，结果如下：
-
-一致：142 个实验（hash 均为 a1b2c3d4e5f6a7b8）
-不一致：3 个实验
-  - exp_LGBM_v007.jsonl  hash=9f8e7d6c5b4a3210
-    change_desc: "改用 10 折提升稳定性"
-  - exp_XGB_v003.jsonl   hash=9f8e7d6c5b4a3210
-    change_desc: "同上，10 折"
-  - exp_NN_v002.jsonl    hash=1122334455667788
-    change_desc: "换 GroupKFold 按客户分组"
-
-建议：这 3 个实验的分数不可与其余 142 个直接比较，
-      是否作废请你决定。我没有删除任何文件。
-```
+>
+> 扫描完成，结果如下：
+>
+> 一致：142 个实验（hash 均为 a1b2c3d4e5f6a7b8）
+> 不一致：3 个实验
+>   - exp_LGBM_v007.jsonl  hash=9f8e7d6c5b4a3210
+>     change_desc: "改用 10 折提升稳定性"
+>   - exp_XGB_v003.jsonl   hash=9f8e7d6c5b4a3210
+>     change_desc: "同上，10 折"
+>   - exp_NN_v002.jsonl    hash=1122334455667788
+>     change_desc: "换 GroupKFold 按客户分组"
+>
+> 建议：这 3 个实验的分数不可与其余 142 个直接比较，
+>       是否作废请你决定。我没有删除任何文件。
 
 你看，它不但列出来了，还**明确声明“我没有删除任何文件”**——这就是把不可逆操作的决定权交还给你。
 
