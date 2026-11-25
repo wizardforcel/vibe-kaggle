@@ -83,37 +83,37 @@ AutoGluon / LightGBM 基线工件，产出 OOF 与测试预测。人检查两件
 
 先看 Agent 怎么实现模数字段分解。把这段话丢给它：
 
-```
-请实现模数字段分解：对 timestamp 列分别取 mod 7（周）、mod 30（月）、
-mod 365（年），并生成对应 sin/cos 谐波特征。产出对比工件 LGBM_FE_v001。
-change_desc 写明新增特征。固定 CV 协议不变。
-```
+> **提示词**：请实现模数字段分解：对 timestamp 列分别取 mod 7（周）、mod 30（月）、mod 365（年），并生成对应 sin/cos 谐波特征。产出对比工件 LGBM_FE_v001。change_desc 写明新增特征。固定 CV 协议不变。
 
 模型输出（节选，注意它诚实地标注了自己的假设）：
 
-```
+> **AI 输出**
+>
 > （思考过程）timestamp 可能是 Unix 秒或日期字符串。先转成 datetime，
 > 再取 .dt.dayofweek、.dt.day、.dt.dayofyear。谐波用 2π/period。
 > 注意：如果 timestamp 是 ID 而非真实时间，这些特征无意义——
 > 这一点需要人确认，我在 change_desc 里标注"假设 timestamp 为真实时间"。
-
-import numpy as np
-import pandas as pd
-
-
-def add_time_features(df, ts_col="timestamp"):
-    """模数字段分解 + 谐波周期特征。"""
-    df = df.copy()
-    ts = pd.to_datetime(df[ts_col])
-    df["dow"] = ts.dt.dayofweek        # 周周期 0-6（周一=0）
-    df["dom"] = ts.dt.day              # 月周期 1-31
-    df["doy"] = ts.dt.dayofyear        # 年周期 1-366
-    for col, period in [("dow", 7), ("dom", 30.44), ("doy", 365.25)]:
-        ang = 2 * np.pi * df[col] / period   # 把“第几天”换算成“圆周上的角度”
-        df[f"{col}_sin"] = np.sin(ang)       # 谐波：把周期位置映射到圆周
-        df[f"{col}_cos"] = np.cos(ang)
-    return df
-```
+>
+> ```python
+> import numpy as np
+> import pandas as pd
+> ```
+>
+>
+> ```python
+> def add_time_features(df, ts_col="timestamp"):
+>     """模数字段分解 + 谐波周期特征。"""
+>     df = df.copy()
+>     ts = pd.to_datetime(df[ts_col])
+>     df["dow"] = ts.dt.dayofweek        # 周周期 0-6（周一=0）
+>     df["dom"] = ts.dt.day              # 月周期 1-31
+>     df["doy"] = ts.dt.dayofyear        # 年周期 1-366
+>     for col, period in [("dow", 7), ("dom", 30.44), ("doy", 365.25)]:
+>         ang = 2 * np.pi * df[col] / period   # 把“第几天”换算成“圆周上的角度”
+>         df[f"{col}_sin"] = np.sin(ang)       # 谐波：把周期位置映射到圆周
+>         df[f"{col}_cos"] = np.cos(ang)
+>     return df
+> ```
 
 **这里 Agent 做对了一件事**：它明确说了“假设 timestamp 是真实时间，这一点需要人确认”。这就是好的协作姿态——**把不确定的地方标出来交给人，而不是装作自己知道。**
 
@@ -166,29 +166,25 @@ def smooth_target_encode(train_df, val_df, col, target, alpha=10.0):
 
 关于 α，还可以再问模型一句，让它帮你把“取舍”讲清楚：
 
-```
-目标编码的平滑强度 α，我在 5 和 50 之间拿不定主意。
-请只讲两件事：α 变大时偏差和方差各自怎么变，
-以及我应该看数据的哪个量来决定。不要写代码。
-```
+> **提示词**：目标编码的平滑强度 α，我在 5 和 50 之间拿不定主意。请只讲两件事：α 变大时偏差和方差各自怎么变，以及我应该看数据的哪个量来决定。不要写代码。
 
 模型会这样回答：
 
-```
+> **AI 输出**
+>
 > （思考过程）用户只要判断依据，不要代码，说明他想自己拍板。
 > 那就把偏差-方差的权衡讲清楚，最后落到一个可观测的量上：
 > 各类别的样本数分布。不要堆公式。
-
-α 变大，等于更信任全局均值：
-  - 偏差变大：每个类别的真实差异被抹平，编码值都往中间靠；
-  - 方差变小：小类别不再因为一两个样本就跳到极端值。
-
-α 变小则相反：类别差异保留得多，但小类别的编码值会乱跳。
-
-所以该看的量是：目标列按类别分组后的 count 分布。
-如果中位数有几百，5 就够；如果大量类别只有个位数样本，
-就往 50 甚至更大走。另外，无论取多少，都必须只用训练折算。
-```
+>
+> α 变大，等于更信任全局均值：
+>   - 偏差变大：每个类别的真实差异被抹平，编码值都往中间靠；
+>   - 方差变小：小类别不再因为一两个样本就跳到极端值。
+>
+> α 变小则相反：类别差异保留得多，但小类别的编码值会乱跳。
+>
+> 所以该看的量是：目标列按类别分组后的 count 分布。
+> 如果中位数有几百，5 就够；如果大量类别只有个位数样本，
+> 就往 50 甚至更大走。另外，无论取多少，都必须只用训练折算。
 
 你看，它没有替你做决定，而是把“该看哪个数”指给你。**这就是我们要的：Agent 收窄问题，人做最后那一刀。**
 
