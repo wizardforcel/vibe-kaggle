@@ -483,28 +483,225 @@ MLE-Bench、Agentic Kaggle Skill、Kaggle 社区中 Agent 辅助的 writeup。
 **23.5 全书知识点回顾**
 
 
-## 附录
+## 附录A：NumPy / pandas / matplotlib 快速参考（精简合并版）
 
-**附录A**：NumPy / pandas / matplotlib 快速参考（精简合并版）
+> 定位：把三件套最常用的 20% 操作集中在一处，供全书代码片段回查。不追求 API 全量，只保留"写竞赛代码真的会用到"的部分。
 
-**附录B**：scikit-learn / XGBoost / LightGBM 速查
+**A.1 NumPy 数组创建与形状变换**
+`np.array` / `np.zeros` / `np.arange` / `np.linspace` 的创建方式；`reshape` / `ravel` / `transpose` / `concatenate` / `stack` 的形状操作；形状不匹配时 `ValueError` 的常见原因。
 
-**附录C**：AutoGluon 快速参考（Tabular / TimeSeries）
+**A.2 NumPy 索引、切片与广播**
+基本切片与视图（view）vs 拷贝（copy）的区别；布尔掩码索引；`np.where` 三目运算；广播规则（broadcast）与"为什么 (n,1) 和 (n,) 能相加"。
 
-**附录D**：PyTorch / HuggingFace Transformers 速查
+**A.3 NumPy 统计与聚合**
+`sum` / `mean` / `std` / `min` / `max` / `argmin` / `argmax`；`percentile` 与分位数；`axis` 参数到底在"消哪一维"；NaN 处理（`nanmean` / `nanstd`）。
 
-**附录E**：表格基础模型速查（TabPFN 等）
+**A.4 pandas Series 与 DataFrame 基础**
+Series 的索引对齐；DataFrame 的 `shape` / `columns` / `dtypes` / `info()` / `describe()`；`astype` 类型转换；`rename` 与 `set_index`。
 
-**附录F**：Kaggle MCP 配置与安全实践
+**A.5 pandas 读写与筛选**
+`read_csv` 常用参数（`nrows` / `usecols` / `dtype` / `parse_dates`）；`loc` 与 `iloc` 的区别；`query` 表达式筛选；`isin` 与 `between`；缺失值统计 `isna().sum()`。
 
-**附录G**：Kaggle 评估指标速查（含“Agent 容易在哪个指标上骗你”的提示）
+**A.6 pandas 分组聚合与透视**
+`groupby` + `agg` 多函数聚合；`transform` 与 `apply` 的差别（为什么目标编码要用 `transform`）；`pivot_table` 做交叉表；`value_counts` 看类别分布。
 
-**附录H**：工件管理与实验日志规范（完整版）
+**A.7 pandas 合并与连接**
+`merge` 的 `how`（inner/left/right/outer）与 `on` / `left_on` / `right_on`；`concat` 的 `axis=0/1`；`join` 与索引对齐；合并后行数变多的排查方法（一对多导致的行膨胀）。
+
+**A.8 matplotlib 常见图表与样式**
+折线 / 散点 / 直方图 / 箱线图 / 柱状图的绘制；`figsize` / `dpi` / `bbox_inches="tight"` 的用途；中文字体与负号显示；`plt.close()` 防止内存泄漏。
+
+**A.9 三件套的分工与数据流**
+【Mermaid：原始 CSV → pandas 清洗 → NumPy 矩阵 → matplotlib 出图 → 工件落盘】
+
+---
+
+## 附录B：scikit-learn / XGBoost / LightGBM 速查
+
+> 定位：树模型与通用机器学习 API 的对照表。重点不是参数大全，而是"同一个动作在三个库里分别怎么写"。
+
+**B.1 估计器 API 三件套**
+`fit` / `predict` / `predict_proba` / `score` 的统一约定；`n_jobs` 与 `random_state` 该不该固定；为什么"换库不换 API"让集成变简单。
+
+**B.2 预处理：缩放、编码、缺失值**
+`StandardScaler` / `MinMaxScaler` / `RobustScaler` 的适用场景；`OneHotEncoder` 与 `OrdinalEncoder`；`SimpleImputer` 的 `strategy` 选择；**所有预处理都必须在训练折上 fit**（防泄漏）。
+
+**B.3 交叉验证与网格搜索**
+`KFold` / `StratifiedKFold` / `GroupKFold` / `TimeSeriesSplit` 的选择表；`cross_val_score` 与 `cross_val_predict`（后者才产出 OOF）；`GridSearchCV` / `RandomizedSearchCV` 的 `scoring` 与 `refit`。
+
+**B.4 管道与列变换**
+`Pipeline` 把预处理和模型串起来；`ColumnTransformer` 对不同列用不同处理；为什么管道能让"预处理只 fit 一次"变成默认行为。
+
+**B.5 评估指标速查**
+分类：`roc_auc_score` / `log_loss` / `f1_score` / `accuracy_score`；回归：`mean_squared_error` / `mean_absolute_error` / `mean_squared_log_error`；排序：`ndcg_score` / `average_precision_score`。
+
+**B.6 XGBoost 核心参数与早停**
+`n_estimators` / `max_depth` / `learning_rate` / `subsample` / `colsample_bytree` / `reg_lambda`；`early_stopping_rounds` 与 `eval_set` 的正确用法；`tree_method="hist"` 与 GPU。
+
+**B.7 LightGBM 核心参数与类别特征**
+`num_leaves` 与 `max_depth` 的换算关系；`min_child_samples`；`categorical_feature` 直接吃类别列的优势；`device="gpu"` 的收益与坑。
+
+**B.8 CatBoost 与 GPU 加速要点**
+`cat_features` 自动编码；`task_type="GPU"`；`verbose` 控制；为什么它在类别特征多的表格赛里常是"免费涨点"。
+
+**B.9 三者怎么选**
+【Mermaid：数据规模 × 类别特征占比 × 是否需要 GPU → 选 XGB / LGBM / CatBoost 的决策图】
+
+---
+
+## 附录C：AutoGluon 快速参考（Tabular / TimeSeries）
+
+> 定位：本书"自动基线"的主力工具。只保留产出合规工件所需的调用，以及必须人来判断的那几个开关。
+
+**C.1 Tabular 快速开始**
+`TabularPredictor(label=..., eval_metric=..., path=...)`；`fit(train_data, time_limit=...)`；`predict` / `predict_proba`；`leaderboard()` 看内部集成结果。
+
+**C.2 presets 档位与 time_limit 的取舍**
+`best_quality` / `high_quality` / `medium_quality` / `fast` 四档的差异；`time_limit` 设太小会导致"基线还没训完就结束"；`num_bag_folds` / `num_stack_levels` 对 OOF 质量的影响。
+
+**C.3 产出 OOF 与测试预测工件的标准写法**
+用**人定的固定折**算 OOF（而不是 AutoGluon 内部随便切的折）；把 `predict_proba` 结果按 `train_oof_[MODEL]_[VERSION].npy` 规范落盘；同时保存测试预测与配置快照。
+
+**C.4 内部集成机制与"它已经 stacking 过了"**
+AutoGluon 自带多层 stacking 与 bagging；人工 stack 的价值在于引入它之外的模型家族；不要重复造它已经做好的那层。
+
+**C.5 TimeSeries 快速开始**
+`TimeSeriesPredictor(prediction_length=..., target=..., eval_metric=..., path=...)`；长格式数据要求（`item_id` / `timestamp` / `target`）；`fit(..., time_limit=...)` 与 `predict`。
+
+**C.6 时序基线工件与零样本对照**
+AutoGluon-TimeSeries 基线 + Chronos / TimesFM 零样本预测并列存档；两者误差模式不同，是后续融合的多样性来源。
+
+**C.7 常见坑**
+内存不足（降 presets / 减 bag folds）；时间预算被"第一个模型"吃光；内部折与外部 CV 折不一致导致 OOF 不可比；GPU 不可用时自动回退 CPU 的静默行为。
+
+---
+
+## 附录D：PyTorch / HuggingFace Transformers 速查
+
+> 定位：图像与文本章节的代码底座。重点是"冻结骨干 + 轻量头"这条主路径，以及训练循环的最小骨架。
+
+**D.1 Tensor 创建、索引与设备迁移**
+`torch.tensor` / `torch.zeros` / `torch.randn`；`view` vs `reshape`；`.to(device)` 与 `.cuda()`；`detach()` / `item()` 的区别；默认 dtype 与 float32 的显存账。
+
+**D.2 Dataset 与 DataLoader**
+`Dataset` 的 `__len__` / `__getitem__`；自定义 collate；`DataLoader` 的 `batch_size` / `shuffle` / `num_workers` / `pin_memory`；类别不平衡时的采样策略。
+
+**D.3 nn.Module 与训练循环骨架**
+`__init__` 定义层、`forward` 定义数据流；`optimizer.zero_grad()` → `loss.backward()` → `optimizer.step()` 四步；`model.train()` / `model.eval()` 的差别（Dropout / BN）。
+
+**D.4 优化器、学习率调度与混合精度**
+`AdamW` 与 `SGD` 的取舍；`torch.optim.lr_scheduler` 的 warmup + 余弦 / 线性衰减；`torch.cuda.amp` 自动混合精度；梯度裁剪 `clip_grad_norm_`。
+
+**D.5 Transformers 模型加载与分词器**
+`AutoModel` / `AutoModelForSequenceClassification` / `AutoTokenizer`；`max_length` 与截断策略；`padding` / `truncation` / `return_tensors="pt"`；`attention_mask` 为什么必须传。
+
+**D.6 冻结骨干 + 轻量头的标准写法**
+冻结前 N 层（`requires_grad_(False)`）；只训 head；何时解冻末尾几层；学习率分层（骨干小、头大）；小数据上"先训头再解冻"的两段式。
+
+**D.7 保存、加载与推理一致性**
+`state_dict` 与整模型保存的取舍；推理必须 `model.eval()` + `torch.no_grad()`；TTA 后概率要与验证集同口径校准；图像预处理（尺寸 / 归一化 / 通道顺序）必须与训练一致。
+
+---
+
+## 附录E：表格基础模型速查（TabPFN 等）
+
+> 定位：零调参基线的来源。回答"什么时候该用它、什么时候不该用"。
+
+**E.1 TabPFN 是什么、什么时候用**
+Prior-Data Fitted Network 的直觉（"作业题都做过一遍了"）；中小规模（几千到几万行）表格上的零调参强基线；与树模型误差模式不同，适合做多样性来源。
+
+**E.2 TabPFN 最小可用示例**
+【Python 代码示例：TabPFNClassifier / TabPFNRegressor 的 fit + predict_proba，并产出合规工件】
+
+**E.3 与树模型的互补性**
+OOF 相关性检查（< 0.95 才有集成价值）；"一个不调参的模型跑赢 36 模型手工堆叠"的真实案例与它的边界。
+
+**E.4 其他表格基础模型与适用规模**
+不同基础模型对行数 / 类别特征 / 缺失值的容忍度对照表；超出规模时的降级策略（采样 + 树模型兜底）。
+
+**E.5 使用前提：规则是否允许预训练模型**
+部分比赛限制预训练模型与外部数据；先读 `Rules` 再决定用不用；把模型名与版本写进配置而不是硬编码。
+
+---
+
+## 附录F：Kaggle MCP 配置与安全实践
+
+> 定位：让 Agent 能持续操作平台，同时把"不可逆"关在笼子里。这一章是全书安全边界的落地页。
+
+**F.1 MCP 是什么、解决什么问题**
+Model Context Protocol 的直觉（Agent 的"手和脚"）；没有 MCP 只能聊天、有了 MCP 能下载 / 训练 / 落盘 / 提交；为什么"全包"是双刃剑。
+
+**F.2 安装与配置**
+配置文件位置与最小可用配置片段；`mcp` 服务器启动命令；连通性自检（先跑 `list_experiments` 这类只读工具）。
+
+**F.3 工具清单与权限白名单**
+`read_data` / `write_artifact` / `train_model` / `predict` / `submit_dryrun` / `submit` / `list_experiments` / `compute_oof_corr` / `generate_report`；`forbidden_tools` 里为什么必须有 `shell_exec`。
+
+**F.4 预览-确认双调用与提交预算**
+所有写操作默认 `dry_run=true`；人确认后才 `false`；`daily_submit_limit` 的设定依据（正式赛约 5 次 / Playground 约 9 次，GMT 午夜重置）。
+
+**F.5 审计日志与不可逆操作**
+`mcp_audit.jsonl` 记录每次调用；`allow_destructive: false` 默认关闭删除；事后追溯"Agent 到底动了什么"。
+
+**F.6 常见故障排查**
+下载失败（门控权重 / 网络）；提交被拒（格式 / 额度）；工件写不进去（路径 / 权限）；超时（time_limit 与平台时限）。
+
+---
+
+## 附录G：Kaggle 评估指标速查（含“Agent 容易在哪个指标上骗你”的提示）
+
+> 定位：指标是"人不可让渡的判断"的第一项。这张表既给公式，也给"这个指标在什么情况下会骗你"。
+
+**G.1 回归指标**
+RMSE / MAE / RMSPE / MAPE / R² 的公式与适用场景；异常值对 RMSE 的放大效应；真实值接近 0 时 MAPE 爆炸的原因与兜底。
+
+**G.2 分类指标**
+AUC / LogLoss / Accuracy / F1 / 精确率-召回率的取舍；类别不平衡下 Accuracy 为什么失效；AUC 对概率校准不敏感、LogLoss 敏感。
+
+**G.3 排序与多标签指标**
+MAP / NDCG / 列平均 AUC（macro AUC）/ F2；多标签任务里"列平均"与"整体平均"的差别；稀有类别被平均稀释的问题。
+
+**G.4 加权与自定义指标怎么读**
+加权 MAE / 加权 R² 的权重从哪来；官方指标里"补偿不平衡"的设计意图；读不懂权重就先别调模型。
+
+**G.5 Agent 容易在哪个指标上骗你**
+【Mermaid：指标 → 常见自欺方式 → 对应检查动作 的对照图】；用 Accuracy 掩盖不平衡、用随机切分抬高 CV、用 TTA 后概率套验证集阈值、用公开榜当验证集。
+
+**G.6 指标与验证方案的搭配表**
+指标类型 × 数据分布 × 时间性 → 推荐的验证切分；一张表查完"该用什么指标、该怎么切"。
+
+---
+
+## 附录H：工件管理与实验日志规范（完整版）
+
+> 定位：第 2 章工件规范的完整落地版。这一章是"可组合、可追溯、可审计"三件事的全部细节。
+
+**H.1 目录结构（完整版）**
+`artifacts/`（oof / test_preds / logs / configs / submissions / ensembles）+ `data/`（只读）+ `src/` + `configs/` + `notebooks/` + `scripts/` 的完整树；为什么 `artifacts/` 要进 `.gitignore` 或用 DVC。
+
+**H.2 命名约定与版本号规则**
+`train_oof_{模型}_{版本}.npy` / `test_preds_{模型}_{版本}.npy` / `exp_{模型}_{版本}.jsonl` / `cfg_{模型}_{版本}.yaml` / `submission_{模型}_{版本}.csv`；版本号三位数字严格递增；多任务后缀 `_cls` / `_reg`。
+
+**H.3 元数据 Schema（完整字段）**
+【Python 代码示例：Pydantic `ArtifactMetadata` 全字段（身份 / 验证协议 / 性能 / 工件路径 / 数据血统 / 变更描述 / 时间与来源）】
+
+**H.4 JSON Lines 日志写入与读取**
+一行一个实验的追加写；读取时按模型 / 版本 / 时间过滤；日志损坏（半行写入）的容错处理。
+
+**H.5 折索引哈希与验证协议校验**
+`cv_fold_indices_hash` 的生成与比对；扫描全部日志揪出"验证协议不一致"的实验；为什么哈希是防作弊的锚点。
+
+**H.6 工件清理、归档与版本管理**
+过期工件的归档策略；DVC / MLflow 管理大文件；清理前必须确认"这个工件没有被任何集成引用"。
+
+**H.7 一次实验的完整检查清单**
+从读协议 → 固定折 → 训练 → 落盘 → 写日志 → 自检 → 人审的逐项勾选表；任何一项没打勾就不算"合规工件"。
 
 
 ## 更新历史
 
 | 日期 | 版本 | 更新内容 |
 |------|------|----------|
+| 2026-11-25 | v2.2 | 附录细纲由单行条目扩充为 x.y 二级小节：附录A（A.1–A.9）、B（B.1–B.9）、C（C.1–C.7）、D（D.1–D.7）、E（E.1–E.5）、F（F.1–F.6）、G（G.1–G.6）、H（H.1–H.7），每个附录补定位说明与小节要点 |
 | 2026-11-25 | v2.1 | 添加“**附录D**：PyTorch / HuggingFace Transformers 速查”，其它附录编号顺延 | 
 | 2026-11-22 | v2.0 | 比赛解析章节全部替换为 2024—2026 年比赛：表格（S6E3 客户流失 / S5E10 道路事故 / S6E1 学生成绩 / NeurIPS Open Polymer 2025）、时序（S5E1 贴纸销售 / S5E10 道路事故 / Jane Street 2024—2025）、图像（CSIRO Image2Biomass 2025—2026 / RSNA Knee 2026 / Image Matching 2025）、文本（Jigsaw Agile Community Rules 2025 / LLM Prompt Recovery 2024 / Make Data Count 2025）。每章保留 VibeKaggle 的“自动基线工件 → 人设定验证纪律 → Agent 批量实验 → 人审查工件并选择”循环，并引用具体获胜方案中的工件管理和人机分工细节 |
