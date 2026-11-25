@@ -52,14 +52,14 @@ https://datawhalechina.github.io/baizhan-kaggle
 | [第21章 调优与集成：Agent 搜索，人选择](docs/chapter21/index.md) | 超参搜索、Stacking、NNLS、多样性选择 | 已完成 |
 | [第22章 VibeKaggle 的策略与心态](docs/chapter22/index.md) | 选比赛、提交预算、人类队友 + Agent 队友、从运动员到教练 | 已完成 |
 | [第23章 从 VibeKaggle 到实际项目](docs/chapter23/index.md) | 竞赛经验迁移生产、可维护项目结构、模型部署 | 已完成 |
-| [附录A NumPy / pandas / matplotlib 快速参考](docs/appendices/appendix_a.md) | 数组、DataFrame、常见图表（精简合并版） | 已完成 |
-| [附录B scikit-learn / XGBoost / LightGBM 速查](docs/appendices/appendix_b.md) | 预处理、模型、交叉验证、评估 | 已完成 |
-| [附录C AutoGluon 快速参考](docs/appendices/appendix_c.md) | Tabular / TimeSeries 用法 | 已完成 |
-| [附录D PyTorch / HuggingFace Transformers 速查](docs/appendices/appendix_d.md) | Tensor、nn.Module、训练循环、Transformers | 已完成 |
-| [附录E 表格基础模型速查](docs/appendices/appendix_e.md) | TabPFN 等表格基础模型 | 已完成 |
-| [附录F Kaggle MCP 配置与安全实践](docs/appendices/appendix_f.md) | MCP 接入、护栏与审计 | 已完成 |
-| [附录G Kaggle 评估指标速查](docs/appendices/appendix_g.md) | 回归/分类指标公式与适用场景 | 已完成 |
-| [附录H 工件管理与实验日志规范](docs/appendices/appendix_h.md) | 完整版工件元数据与日志规范 | 已完成 |
+| [附录A NumPy / pandas / matplotlib 快速参考](docs/appendix_a/index.md) | 数组、DataFrame、常见图表（精简合并版） | 已完成 |
+| [附录B scikit-learn / XGBoost / LightGBM 速查](docs/appendix_b/index.md) | 预处理、模型、交叉验证、评估 | 已完成 |
+| [附录C AutoGluon 快速参考](docs/appendix_c/index.md) | Tabular / TimeSeries 用法 | 已完成 |
+| [附录D PyTorch / HuggingFace Transformers 速查](docs/appendix_d/index.md) | Tensor、nn.Module、训练循环、Transformers | 已完成 |
+| [附录E 表格基础模型速查](docs/appendix_e/index.md) | TabPFN 等表格基础模型 | 已完成 |
+| [附录F Kaggle MCP 配置与安全实践](docs/appendix_f/index.md) | MCP 接入、护栏与审计 | 已完成 |
+| [附录G Kaggle 评估指标速查](docs/appendix_g/index.md) | 回归/分类指标公式与适用场景 | 已完成 |
+| [附录H 工件管理与实验日志规范](docs/appendix_h/index.md) | 完整版工件元数据与日志规范 | 已完成 |
 
 ## 贡献者名单
 
