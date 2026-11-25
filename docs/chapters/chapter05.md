@@ -1,21 +1,25 @@
 # 第5章 表格比赛详解：Playground S5E10 道路事故风险预测（2025，AutoGluon 作为起点）
 
-> **本章目标**：展示“AutoGluon 建基线 → Agent 扩大候选池 → 人做互补性判断”的完整流程。本章的 8th place 方案是很好的教学样本：它明确把 AutoGluon 作为基线之一，并通过 Greedy NNLS + LassoCV 从约 40 列 OOF 筛到 4—6 列——这个**筛选逻辑**是人判断的产物。
+> **本章目标**：看一个“回归 + 多模型筛选”的完整案例。8th place 方案的做法很教学：先用 AutoGluon 探路，再让 Agent 把候选模型从几个扩到约 40 个，最后用 Greedy NNLS 和 LassoCV 从 40 列 OOF 里挑出 4-6 列最互补的。**核心不是“挑分数最高的”，而是“挑最互补的”**——这个筛选逻辑，是人判断的产物。
 
 ---
 
-## 5.1 比赛与数据
+## 开篇：为什么“分数最高”往往是陷阱
 
-回归任务，RMSE 指标，2025 年 Playground。
+上一章我们看了一个“堆量”的冠军案例。这一章反过来，看一个“做减法”的案例。
 
-道路事故风险预测：根据道路几何、环境、时间等特征预测某路段的事故风险分数。数据包含数值与类别混合特征。
+新手做集成，最自然的想法是：把 CV 分数最高的几个模型一平均，不就完了？但老手都知道，这经常不管用，甚至越平均越差。为什么？因为如果几个模型都很强、但它们犯的错高度相似（比如都是 XGBoost 的不同超参），那平均之后，错的地方还是错，没有互相补救。
+
+真正有用的集成，要的是**互补**：A 模型错的地方，B 模型恰好对；B 模型错的地方，C 模型恰好对。这样平均下来，错误互相抵消，分数才涨。S5E10 的 8th place 方案，干的就是“从一堆模型里挑出互补的那几个”这件事。
+
+先看路线图：
 
 ```mermaid
 flowchart LR
     A[AutoGluon基线] --> B[(合规OOF工件)]
     B --> C[Agent枚举XGB/TabM/LGBM/NN]
     C --> D[约40列OOF]
-    D --> E[Greedy NNLS+LassoCV]
+    D --> E[Greedy NNLS + LassoCV]
     E --> F[人判断4-6列]
     F --> G[Ridge/MetaNN stack]
     style B fill:#c8e6c9
@@ -24,17 +28,26 @@ flowchart LR
 
 ---
 
+## 5.1 比赛与数据
+
+回归任务，指标 RMSE（均方根误差，越小越好）。道路事故风险预测：根据道路几何、环境、时间等特征，预测某路段的事故风险分数。数据是数值与类别混合的表格。
+
+和 S6E3 不同，这是回归，所以基线里 `eval_metric` 要换成 `rmse`，预测用 `predict()` 而不是 `predict_proba()`。别小看这个区别，新手常在这里翻车——把回归当分类跑，或者预测出负数还傻乎乎提交。
+
+---
+
 ## 5.2 自动基线工件
 
-AutoGluon 适配器快速产出基线工件。8th place 方案**明确使用 AutoGluon 作为基线模型之一**，并在原型阶段用 AutoGluon 探索可行性——先知道“不费力能做到什么水平”，再决定投入多少。
+AutoGluon 适配器快速产出基线工件。8th place 方案**明确把 AutoGluon 作为基线模型之一**，并且在原型阶段就用 AutoGluon 探索可行性——先知道“不费力能做到什么水平”，再决定投入多少。
 
 ```python
 # src/baselines/ag_regression.py
 """
 回归任务的 AutoGluon 基线：RMSE 指标，产出合规 OOF/test 工件。
-与第3章分类基线区别：eval_metric='rmse'，预测用 predict() 而非 predict_proba()。
+与分类基线的区别：eval_metric='rmse'，预测用 predict() 而非 predict_proba()。
 """
-import numpy as np, pandas as pd, json, yaml
+import numpy as np
+import pandas as pd
 from pathlib import Path
 from autogluon.tabular import TabularPredictor
 from sklearn.metrics import mean_squared_error
@@ -45,16 +58,16 @@ test = pd.read_csv(ROOT / "data" / "test.csv")
 TARGET, ID = "target", "id"
 y = train[TARGET].values
 
+# 全量训练一个基线模型（示意；严格 OOF 见第 3 章 save_artifact 流程）
 p = TabularPredictor(label=TARGET, eval_metric="rmse",
                      path=str(ROOT / "artifacts" / "_ag_reg"))
 p.fit(train, time_limit=300, presets="medium_quality", verbosity=0)
 test_pred = p.predict(test.drop(columns=[ID], errors="ignore")).values
-oof = p.predict_proba_oof  # 占位：实际用固定折重训得 OOF
 print("基线测试预测完成，长度", len(test_pred))
-# 保存工件（复用第3章 save_artifact 逻辑）
+# 保存工件（复用第 3 章 save_artifact 逻辑）
 ```
 
-人检查**误差模式**：RMSE 在不同路段类型/时间段上的分布是否均匀？若某类路段误差远高，说明该子群需要特殊处理。
+跑完，人检查**误差模式**：RMSE 在不同路段类型、不同时间段上是不是均匀？如果某类路段误差远高，说明这个子群需要特殊处理（比如单独建模或加特征）。
 
 ---
 
@@ -62,7 +75,7 @@ print("基线测试预测完成，长度", len(test_pred))
 
 ### 5.3.1 Agent 批量生成模型工件
 
-Agent 在固定 CV 下批量生成 XGBoost、TabM、LightGBM、神经网络等模型的工件，最终积累约 **40 列 OOF**。
+Agent 在固定 CV 下批量生成 XGBoost、TabM（一种表格神经网络）、LightGBM、多层感知机等模型的工件，最终积累约 **40 列 OOF**。你可以这样指挥它：
 
 ```
 请在固定 CV 协议下批量训练以下模型，每个产出合规 OOF/test 工件：
@@ -74,22 +87,27 @@ Agent 在固定 CV 下批量生成 XGBoost、TabM、LightGBM、神经网络等�
 禁止修改 cv_protocol.yaml，禁止删除已有工件。
 ```
 
-### 5.3.2 人的判断：互补信号，而非单模型最高分
+注意最后一句“禁止删除已有工件”——这是防止 Agent 为了“腾地方”把别人的成果清了。
 
-8th place 方案的关键**不是**挑 CV 最高的模型，而是从约 40 列 OOF 中通过 **Greedy NNLS** 和 **LassoCV** 筛选到 **4—6 列**。这个筛选逻辑体现的是“互补性”判断：
+### 5.3.2 人的判断：要互补信号，不要单模型最高分
+
+8th place 方案的关键，不是挑 CV 最高的模型，而是从约 40 列 OOF 里，用 **Greedy NNLS** 和 **LassoCV** 筛到 **4-6 列**。这两个工具，一个管“贪心选互补”，一个管“稀疏筛选”。
+
+先解释 **NNLS（非负最小二乘）**：普通最小二乘求权重时，权重可正可负；NNLS 强制权重非负。为什么非负重要？因为负权重意味着“把某个模型的预测反过来用”，这通常不可解释、也不稳。非负权重更像“加权平均”，稳健、好解释。
 
 ```python
 # src/ensembles/greedy_nnls.py
 """
 Greedy NNLS：贪心加入使 RMSE 最优的非负权重组合。
-NNLS = 非负最小二乘，权重非负且可解释。
+从空集开始，每次尝试加入一个模型，用 NNLS 解最优非负权重，
+选让 RMSE 降得最多的那个，直到加不动为止。
 """
 import numpy as np
 from scipy.optimize import nnls
 from sklearn.metrics import mean_squared_error
 
+
 def greedy_nnls(oofs: dict, y, max_models=8, tol=1e-5):
-    """从空集开始，每次加入 NNLS 后 RMSE 改善最大的模型。"""
     names = list(oofs)
     chosen, cur = [], np.inf
     while len(chosen) < max_models:
@@ -98,72 +116,81 @@ def greedy_nnls(oofs: dict, y, max_models=8, tol=1e-5):
             if n in chosen:
                 continue
             cand = chosen + [n]
-            M = np.column_stack([oofs[m] for m in cand])
-            w, _ = nnls(M, y)                      # 解非负权重
+            M = np.column_stack([oofs[m] for m in cand])   # 拼成矩阵
+            w, _ = nnls(M, y)                               # 解非负权重
             rmse = mean_squared_error(y, M @ w, squared=False)
-            if rmse < best_rmse - tol:
+            if rmse < best_rmse - tol:                      # 有改善才换
                 best_n, best_rmse, best_w = n, rmse, w
-        if best_n is None:
+        if best_n is None:                                  # 加不动了，停
             break
         chosen.append(best_n)
         cur = best_rmse
-        print(f"  + {best_n:<18} RMSE={cur:.5f} 权重={np.round(best_w,3)}")
+        print(f"  + {best_n:<18} RMSE={cur:.5f} 权重={np.round(best_w, 3)}")
     return chosen, cur
 ```
 
+再看 **LassoCV**：Lasso 是带 L1 正则的线性回归，它有个神奇特性——能把不重要的特征权重压成 0，等于自动做“特征选择”。用在我们这儿，就是自动挑出“有用的模型”。
+
 ```python
 # src/ensembles/lasso_select.py
-"""LassoCV：用 L1 正则自动做特征（模型）选择，稀疏权重。"""
+"""LassoCV：用 L1 正则自动做模型选择，留下稀疏的几列。"""
 import numpy as np
 from sklearn.linear_model import LassoCV
+
 
 def lasso_select(oofs: dict, y, cv=5):
     names = list(oofs)
     M = np.column_stack([oofs[n] for n in names])
     lasso = LassoCV(cv=cv, max_iter=10000).fit(M, y)
-    kept = [n for n, c in zip(names, lasso.coef_) if abs(c) > 1e-4]
-    print(f"Lasso 选中 {len(kept)} 个模型: {kept}")
+    kept = [n for n, c in zip(names, lasso.coef_) if abs(c) > 1e-4]  # 权重非零的
+    print(f"Lasso 选中 {len(kept)} 个模型：{kept}")
     return kept
 ```
 
-> **筛选逻辑是人判断的产物**：Greedy NNLS 和 LassoCV 是工具，但“为什么只要 4-6 列而不是全部 40 列”、“哪些列代表不同信号”是人的决策。
+> **筛选逻辑是人判断的产物**：Greedy NNLS 和 LassoCV 是工具，但“为什么只要 4-6 列而不是全部 40 列”“哪些列代表不同信号”，是人的决策。工具帮你算，判断得你自己下。
 
 ---
 
 ## 5.4 集成的人机分工
 
-Agent 执行 Ridge/MetaNN/残差 stacking 的候选实验；人判断 meta-learner 的复杂度和 CV 稳定性是否值得。
+Agent 执行 Ridge / MetaNN / 残差 stacking 的候选实验；人判断 meta-learner（元学习器）的复杂度和 CV 稳定性值不值。
 
 ```python
 # src/ensembles/meta_learner.py
-"""meta-learner 候选：Ridge / MetaNN / 残差 stacking。"""
+"""meta-learner 候选：Ridge（简单）/ MetaNN（复杂）/ 残差 stacking。"""
 import numpy as np
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error
 
+
 def ridge_stack(oofs, y, selected, alpha=1.0):
+    """Ridge 堆叠：一个参数 alpha，简单稳定。"""
     M = np.column_stack([oofs[m] for m in selected])
     m = Ridge(alpha=alpha).fit(M, y)
     return m, mean_squared_error(y, m.predict(M), squared=False)
 
+
 class MetaNN:
-    """简单两层 MLP 作为 meta-learner。"""
+    """两层 MLP 作为 meta-learner，参数多、更灵活。"""
     def __init__(self, hidden=16):
         from sklearn.neural_network import MLPRegressor
         self.m = MLPRegressor(hidden_layer_sizes=(hidden,), max_iter=500,
                               early_stopping=True, random_state=42)
-    def fit(self, X, y): self.m.fit(X, y); return self
-    def predict(self, X): return self.m.predict(X)
+    def fit(self, X, y):
+        self.m.fit(X, y)
+        return self
+    def predict(self, X):
+        return self.m.predict(X)
 ```
 
-**人判断复杂度是否值得**：Ridge（1 个参数）vs MetaNN（数百参数）。若 Ridge CV 与 MetaNN 差距 < 0.0005 RMSE，选 Ridge——简单、稳定、可解释。
+**人判断复杂度值不值**：Ridge 只有 1 个参数，MetaNN 有几百个。如果 Ridge 的 CV 和 MetaNN 差不到 0.0005 RMSE，那就选 Ridge——简单、稳定、可解释。这就是“奥卡姆剃刀”：能用简单模型解决，就别上复杂的。
 
 ---
 
 ## 5.5 提交
 
 ```python
-# 生成最终提交并断言
+# 生成最终提交并断言（复用第 4 章 make_submission）
 from src.submit.make_submission import make_submission
 make_submission("artifacts/test_preds/test_preds_STACK_v001.npy",
                 "data/sample_submission.csv",
@@ -171,9 +198,9 @@ make_submission("artifacts/test_preds/test_preds_STACK_v001.npy",
 ```
 
 提交前清单：
-- [ ] 回归预测范围合理（无负值超出物理意义）
-- [ ] ID 顺序与 sample 一致
-- [ ] CV 与 LB 方向一致性检查（若 LB 大跌，回滚）
+- [ ] 回归预测范围合理（无超出物理意义的负值）；
+- [ ] ID 顺序与 sample 一致；
+- [ ] CV 与 LB 方向一致性检查（LB 大跌就回滚）。
 
 ---
 
@@ -181,8 +208,10 @@ make_submission("artifacts/test_preds/test_preds_STACK_v001.npy",
 
 **AutoGluon 建立基线，Agent 扩大候选池，人做互补性判断。**
 
-- 8th place 用 AutoGluon 探索可行性，说明自动基线的定位是“起点”而非“终点”；
-- Agent 把候选从几个扩到 40 个，但最终 4-6 列的筛选是人判断；
-- meta-learner 复杂度由人根据 CV 稳定性决定。
+- 8th place 用 AutoGluon 探路，说明自动基线的定位是“起点”不是“终点”；
+- Agent 把候选从几个扩到 40 个，但最终 4-6 列的筛选是人的判断；
+- meta-learner 的复杂度，由人根据 CV 稳定性决定。
 
-> **下一章预告**：第 6 章学生考试成绩预测，展示特征工程的深度挖掘——模数字段分解、谐波周期、经验贝叶斯目标编码——以及 Agent 枚举变体、人判断语义合理性的分工。
+这一章和上一章正好互补：上一章教你“怎么让 Agent 大规模产出”，这一章教你“怎么从一大堆产出里做减法”。**会做加法更要会做减法**，这是集成的基本功。
+
+> **下一章预告**：第 6 章学生考试成绩预测，进入特征工程的深水区——模数字段分解、谐波周期、经验贝叶斯平滑目标编码。Agent 能批量生成这些变体，但“周期选 7 还是 30”“平滑强度 α 取多少”这些，得靠你对数据生成机制的理解。
