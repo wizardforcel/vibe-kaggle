@@ -174,43 +174,43 @@ def conservative_clean(text, keep_negation=True):
 
 那怎么让 Agent 处理文本，又不让它把关键信号删掉？你得**明确告诉它边界**：
 
-```
-请写一个文本清洗函数，用于社区规则分类（Reddit 评论）。
-要求：去 HTML 标签、去 URL、多余空白、重复标点。
-注意：不要删除否定词（not / no / never / without）、
-不要删除转折词（but / however）、不要删除标点，
-因为这些在本任务里承载语义。
-```
+> **提示词**：请写一个文本清洗函数，用于社区规则分类（Reddit 评论）。要求：去 HTML 标签、去 URL、多余空白、重复标点。注意：不要删除否定词（not / no / never / without）、不要删除转折词（but / however）、不要删除标点，因为这些在本任务里承载语义。
 
 模型会这样回应：
 
-```
+> **AI 输出**
+>
 > （思考过程）用户明确列了"不能动"的东西。我按"只删噪声、
 > 不删语义"的原则实现，并在 docstring 里写清保留项，
 > 避免以后有人误改。
-
-import re
-
-# 这些词在本任务里承载语义，明确列入"禁止删除"清单
-KEEP_TOKENS = {"not", "no", "never", "without", "but", "however"}
-
-def clean_comment(text: str) -> str:
-    """
-    社区规则分类专用的保守清洗。
-    只删除纯噪声；否定词、转折词、标点一律保留。
-    """
-    text = re.sub(r"<[^>]+>", "", text)          # HTML 标签
-    text = re.sub(r"http\S+|www\.\S+", "", text)  # 链接
-    text = re.sub(r"\s+", " ", text).strip()      # 多余空白
-    text = re.sub(r"!{2,}", "!", text)            # 重复标点压缩到1个
-    # 不做小写化、不删标点、不删 KEEP_TOKENS 里的词
-    return text
-
-【我的说明】
-  我没有做小写化——虽然很多 NLP 流程会做，但你的模型是
-  DeBERTa（自带大小写敏感的分词），小写化反而可能损失信号。
-  如果你想试小写化的收益，可以作为一组对比实验。
-```
+>
+> ```python
+> import re
+> ```
+>
+> ```python
+> # 这些词在本任务里承载语义，明确列入"禁止删除"清单
+> KEEP_TOKENS = {"not", "no", "never", "without", "but", "however"}
+> ```
+>
+> ```python
+> def clean_comment(text: str) -> str:
+>     """
+>     社区规则分类专用的保守清洗。
+>     只删除纯噪声；否定词、转折词、标点一律保留。
+>     """
+>     text = re.sub(r"<[^>]+>", "", text)          # HTML 标签
+>     text = re.sub(r"http\S+|www\.\S+", "", text)  # 链接
+>     text = re.sub(r"\s+", " ", text).strip()      # 多余空白
+>     text = re.sub(r"!{2,}", "!", text)            # 重复标点压缩到1个
+>     # 不做小写化、不删标点、不删 KEEP_TOKENS 里的词
+>     return text
+> ```
+>
+> 【我的说明】
+>   我没有做小写化——虽然很多 NLP 流程会做，但你的模型是
+>   DeBERTa（自带大小写敏感的分词），小写化反而可能损失信号。
+>   如果你想试小写化的收益，可以作为一组对比实验。
 
 看见了吗？**它不仅照做了，还主动指出"我没有做小写化，并解释了为什么"**。这种"把每一个'没做的事'也说明白"的习惯，能帮你审查时少漏很多坑。
 
